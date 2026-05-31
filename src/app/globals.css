@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+  --background: #010101;
+  --foreground: #ffffff;
+  --brand: #0d2dcd;
+  --muted-foreground: rgb(255 255 255 / 55%);
+  --border: #141414;
+  --primary: #0d2dcd;
+  --primary-foreground: #ffffff;
+  --darkgray: #141414;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-darkgray: var(--darkgray);
+  --font-sans: var(--font-dm-sans);
+  --font-mono: var(--font-jetbrains);
+  --font-serif: var(--font-instrument), "Instrument Serif", Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: auto;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgb(13 45 205 / 35%);
+  color: #fff;
+}
+
+.font-anton {
+  font-family: var(--font-anton), Impact, sans-serif;
+}
+
+.font-mono {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+.font-serif {
+  font-family: var(--font-instrument), "Instrument Serif", Georgia, serif;
+}
+
+/* Hero background */
+
+.hero-glow {
+  background:
+    radial-gradient(
+      ellipse 85% 65% at 50% 52%,
+      rgb(13 45 205 / 38%) 0%,
+      rgb(13 45 205 / 16%) 38%,
+      rgb(13 45 205 / 5%) 58%,
+      transparent 72%
+    ),
+    #010101;
+}
+
+/* Hero entrance */
+
+@keyframes hero-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-up {
+  opacity: 0;
+  animation: hero-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .hero-up {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
