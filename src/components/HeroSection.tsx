@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { HeroBackground } from "@/components/HeroBackground";
 
@@ -24,9 +24,30 @@ export default function HeroSection({
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaPrimaryRef = useRef<HTMLAnchorElement>(null);
   const ctaSecondaryRef = useRef<HTMLAnchorElement>(null);
+  const contentLayerRef = useRef<HTMLDivElement>(null);
   const contentRevealedRef = useRef(false);
 
-  const revealContent = () => {
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const eyebrow = eyebrowRef.current;
+    const line1 = line1Ref.current;
+    const line2 = line2Ref.current;
+    const line3 = line3Ref.current;
+    const sub = subRef.current;
+    const ctaPrimary = ctaPrimaryRef.current;
+    const ctaSecondary = ctaSecondaryRef.current;
+    if (!header || !eyebrow || !line1 || !line2 || !line3 || !sub || !ctaPrimary || !ctaSecondary) {
+      return;
+    }
+
+    gsap.set(header, { opacity: 0, y: -22 });
+    gsap.set(eyebrow, { opacity: 0, y: 18 });
+    gsap.set([line1, line2, line3], { y: "110%" });
+    gsap.set(sub, { opacity: 0, y: 16 });
+    gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, scale: 0.94 });
+  }, []);
+
+  const revealContent = useCallback(() => {
     if (contentRevealedRef.current) return;
     contentRevealedRef.current = true;
 
@@ -46,6 +67,7 @@ export default function HeroSection({
     }
 
     if (reduce) {
+      contentLayerRef.current?.classList.add("hero-content-layer--visible");
       gsap.set([header, eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary], {
         opacity: 1,
         y: 0,
@@ -55,11 +77,13 @@ export default function HeroSection({
       return;
     }
 
+    contentLayerRef.current?.classList.add("hero-content-layer--visible");
+
     const lines = [line1, line2, line3];
 
     gsap.set(header, { opacity: 0, y: -22 });
     gsap.set(eyebrow, { opacity: 0, y: 18 });
-    gsap.set(lines, { opacity: 1, y: "110%" });
+    gsap.set(lines, { y: "110%" });
     gsap.set(sub, { opacity: 0, y: 16 });
     gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, scale: 0.94 });
 
@@ -79,12 +103,10 @@ export default function HeroSection({
         { opacity: 1, scale: 1, duration: 0.45, ease: "power3.out" },
         "-=0.28",
       );
-  };
+  }, [onTransitionComplete]);
 
   useEffect(() => {
-    return () => {
-      contentRevealedRef.current = false;
-    };
+    contentRevealedRef.current = false;
   }, []);
 
   return (
@@ -98,9 +120,10 @@ export default function HeroSection({
         onEnvironmentReady={revealContent}
       />
 
+      <div ref={contentLayerRef} className="hero-content-layer relative z-10">
       <header
         ref={headerRef}
-        className="hero-content relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-6 opacity-0"
+        className="relative mx-auto flex max-w-7xl items-center justify-between px-6 py-6"
       >
         <div className="flex items-center gap-2">
           <span className="font-mono text-sm font-medium tracking-[0.22em] text-foreground">
@@ -131,10 +154,10 @@ export default function HeroSection({
         </a>
       </header>
 
-      <div className="hero-content relative z-10 mx-auto flex min-h-[calc(100vh-88px)] max-w-4xl flex-col items-center justify-center px-6 text-center">
+      <div className="relative mx-auto flex min-h-[calc(100vh-88px)] max-w-4xl flex-col items-center justify-center px-6 text-center">
         <p
           ref={eyebrowRef}
-          className="font-mono text-[0.7rem] uppercase tracking-[0.35em] text-muted-foreground opacity-0"
+          className="font-mono text-[0.9rem] uppercase tracking-[0.35em] text-muted-foreground"
         >
           Built for the next generation of traders
         </p>
@@ -162,7 +185,7 @@ export default function HeroSection({
 
         <p
           ref={subRef}
-          className="mt-7 max-w-md text-base text-muted-foreground opacity-0"
+          className="mt-7 max-w-md text-base text-muted-foreground"
         >
           Understand the market before the market moves.
         </p>
@@ -171,7 +194,7 @@ export default function HeroSection({
           <a
             ref={ctaPrimaryRef}
             href="#launch"
-            className="group flex items-center gap-2 rounded-md bg-primary px-7 py-3.5 font-mono text-xs uppercase tracking-widest text-primary-foreground opacity-0 transition-transform hover:-translate-y-0.5"
+            className="group flex items-center gap-2 rounded-md bg-primary px-7 py-3.5 font-mono text-xs uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5"
           >
             Launch Dashboard
             <span className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
@@ -181,7 +204,7 @@ export default function HeroSection({
           <a
             ref={ctaSecondaryRef}
             href="#telegram"
-            className="group flex items-center gap-2 rounded-md border border-border bg-transparent px-7 py-3.5 font-mono text-xs uppercase tracking-widest text-foreground opacity-0 transition-colors hover:bg-darkgray"
+            className="group flex items-center gap-2 rounded-md border border-border bg-transparent px-7 py-3.5 font-mono text-xs uppercase tracking-widest text-foreground transition-colors hover:bg-darkgray"
           >
             Launch Telegram
             <span className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
@@ -189,6 +212,7 @@ export default function HeroSection({
             </span>
           </a>
         </div>
+      </div>
       </div>
     </section>
   );

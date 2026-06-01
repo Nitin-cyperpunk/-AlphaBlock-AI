@@ -11,47 +11,54 @@ type HeroBackgroundProps = {
 };
 
 /**
- * Canvas arrow field with bottom-center blue pool — matches the banner aesthetic.
+ * Canvas arrow field with a centered circular blue glow — matches the banner.
  * Cinematic entrance (pattern spread → glow activation) is handled via GSAP;
  * mouse interaction is gated until `interactive` is true.
  */
 export function HeroBackground({ interactive = false, onEnvironmentReady }: HeroBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const baseRef = useRef<HTMLDivElement>(null);
+  const glowShellRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const vignetteRef = useRef<HTMLDivElement>(null);
   const interactiveRef = useRef(interactive);
+  const onReadyRef = useRef(onEnvironmentReady);
 
   useEffect(() => {
     interactiveRef.current = interactive;
   }, [interactive]);
 
   useEffect(() => {
+    onReadyRef.current = onEnvironmentReady;
+  }, [onEnvironmentReady]);
+
+  useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const base = baseRef.current;
+    const glowShell = glowShellRef.current;
     const glow = glowRef.current;
     const canvasWrap = canvasWrapRef.current;
     const vignette = vignetteRef.current;
-    if (!base || !glow || !canvasWrap || !vignette) return;
+    if (!base || !glowShell || !glow || !canvasWrap || !vignette) return;
 
     if (reduce) {
       gsap.set([base, glow, canvasWrap, vignette], { opacity: 1, clearProps: "clipPath,scale" });
-      glow.classList.add("hero-glow--pulsing");
-      onEnvironmentReady?.();
+      glowShell.classList.add("hero-glow--pulsing");
+      onReadyRef.current?.();
       return;
     }
 
     gsap.set(base, { opacity: 0 });
-    gsap.set(glow, { opacity: 0, scale: 0.5, transformOrigin: "50% 100%" });
+    gsap.set(glow, { opacity: 0, scale: 0.5, transformOrigin: "50% 50%" });
     gsap.set(canvasWrap, { opacity: 0, clipPath: "circle(0% at 50% 50%)" });
     gsap.set(vignette, { opacity: 0 });
 
     const tl = gsap.timeline({
       onComplete: () => {
         canvasWrap.style.clipPath = "inset(0)";
-        glow.classList.add("hero-glow--pulsing");
-        onEnvironmentReady?.();
+        glowShell.classList.add("hero-glow--pulsing");
+        onReadyRef.current?.();
       },
     });
 
@@ -78,7 +85,7 @@ export function HeroBackground({ interactive = false, onEnvironmentReady }: Hero
     return () => {
       tl.kill();
     };
-  }, [onEnvironmentReady]);
+  }, []);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -88,8 +95,8 @@ export function HeroBackground({ interactive = false, onEnvironmentReady }: Hero
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const ARROW = 16;
-    const CELL = 12;
+    const ARROW = 12;
+    const CELL = 18;
     const RADIUS = 200;
     const REST = -Math.PI / 4;
 
@@ -123,8 +130,8 @@ export function HeroBackground({ interactive = false, onEnvironmentReady }: Hero
       glow = new Float32Array(n);
 
       const gx = w * 0.5;
-      const gy = h * 1.08;
-      const gr = Math.hypot(w * 0.65, h * 0.95);
+      const gy = h * 0.52;
+      const gr = Math.min(w, h) * 0.58;
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -133,7 +140,7 @@ export function HeroBackground({ interactive = false, onEnvironmentReady }: Hero
           const x = offsetX + c * CELL;
           const y = offsetY + r * CELL;
           const d = Math.hypot(x - gx, y - gy) / gr;
-          glow[i] = Math.max(0, 1 - d);
+          glow[i] = Math.max(0, 1 - d ** 1.35);
         }
       }
     };
@@ -176,10 +183,10 @@ export function HeroBackground({ interactive = false, onEnvironmentReady }: Hero
           const g = glow[i];
 
           const twinkle = 0.5 + 0.5 * Math.sin(t * 1.6 + phase[i] * 3.1);
-          let alpha = (0.06 + g * 0.4) * (0.65 + 0.35 * twinkle);
+          let alpha = (0.035 + g * g * 0.52) * (0.72 + 0.28 * twinkle);
 
           let angle = REST;
-          let blue = 0.35 + g * 0.65;
+          let blue = 0.2 + g * 0.8;
 
           if (!reduce && interactiveRef.current && mouse.active) {
             const dx = x - mouse.x;
@@ -194,15 +201,15 @@ export function HeroBackground({ interactive = false, onEnvironmentReady }: Hero
             }
           }
 
-          const cr = Math.round(255 - blue * (255 - 90));
-          const cg = Math.round(255 - blue * (255 - 130));
-          const cb = 255;
+          const cr = Math.round(255 - blue * (255 - 100));
+          const cg = Math.round(255 - blue * (255 - 145));
+          const cb = Math.round(255 - blue * (255 - 255));
 
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(angle);
           ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, ${alpha})`;
-          ctx.lineWidth = 1.4;
+          ctx.lineWidth = 1.15;
           const a = ARROW / 2;
           const head = ARROW * 0.42;
           ctx.beginPath();
@@ -234,14 +241,23 @@ export function HeroBackground({ interactive = false, onEnvironmentReady }: Hero
     <>
       <div
         ref={baseRef}
-        className="pointer-events-none absolute inset-0 z-0 bg-[oklch(0.13_0.04_264.5)] opacity-0"
+        className="pointer-events-none absolute inset-0 z-0 opacity-0"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 52%, rgb(8 19 70) 0%, rgb(4 8 28) 38%, rgb(1 1 1) 100%)",
+        }}
         aria-hidden
       />
       <div
-        ref={glowRef}
-        className="hero-glow pointer-events-none absolute inset-0 z-0 opacity-0"
+        ref={glowShellRef}
+        className="hero-glow pointer-events-none absolute left-1/2 top-[52%] z-0 -translate-x-1/2 -translate-y-1/2"
         aria-hidden
-      />
+      >
+        <div
+          ref={glowRef}
+          className="hero-glow-orb h-[min(88vw,960px)] w-[min(88vw,960px)] rounded-full opacity-0"
+        />
+      </div>
       <div
         ref={canvasWrapRef}
         className="pointer-events-none absolute inset-0 z-0 opacity-0"
