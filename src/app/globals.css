@@ -78,32 +78,106 @@ body {
 
 /* Hero background */
 
-@keyframes hero-glow-pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
+@keyframes hero-glow-breathe {
+  0%,
   100% {
     transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.035);
+    opacity: 1;
   }
 }
 
-.hero-glow-orb {
-  background: radial-gradient(
-    circle,
-    rgb(13 45 205 / 68%) 0%,
-    rgb(13 45 205 / 38%) 18%,
-    rgb(13 45 205 / 16%) 42%,
-    transparent 72%
-  );
-  filter: blur(72px);
+.hero-glow-stack {
+  position: relative;
+  width: 1400px;
+  height: 1400px;
+  max-width: min(1400px, 140vw);
+  max-height: min(1400px, 140vw);
   transform-origin: center center;
 }
 
-.hero-glow--pulsing .hero-glow-orb {
-  animation: hero-glow-pulse 10s ease-in-out infinite;
+.hero-glow-bloom,
+.hero-glow-core,
+.hero-glow-mid,
+.hero-glow-outer {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-glow-bloom {
+  background: radial-gradient(
+    circle,
+    rgb(13 45 205 / 42%) 0%,
+    rgb(13 45 205 / 22%) 22%,
+    rgb(13 45 205 / 8%) 48%,
+    transparent 70%
+  );
+  filter: blur(56px);
+  transform: scale(1.08);
+}
+
+.hero-glow-core {
+  background: radial-gradient(
+    circle,
+    rgb(13 45 205 / 38%) 0%,
+    rgb(13 45 205 / 22%) 26%,
+    rgb(13 45 205 / 10%) 48%,
+    transparent 62%
+  );
+  filter: blur(52px);
+}
+
+.hero-glow-mid {
+  background: radial-gradient(
+    circle,
+    rgb(13 45 205 / 22%) 0%,
+    rgb(13 45 205 / 14%) 34%,
+    rgb(13 45 205 / 6%) 55%,
+    transparent 72%
+  );
+  filter: blur(80px);
+}
+
+.hero-glow-outer {
+  background: radial-gradient(
+    circle,
+    rgb(13 45 205 / 10%) 0%,
+    rgb(13 45 205 / 6%) 40%,
+    rgb(13 45 205 / 3%) 58%,
+    transparent 82%
+  );
+  filter: blur(110px);
+}
+
+.hero-glow--pulsing .hero-glow-stack {
+  animation: hero-glow-breathe 10s ease-in-out infinite;
+}
+
+.hero-pattern-stack {
+  isolation: isolate;
+}
+
+.hero-pattern-layer {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
+.hero-wave-canvas {
+  filter: blur(28px);
+  opacity: 0.52;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.hero-arrow-canvas {
+  opacity: 1;
+  pointer-events: none;
 }
 
 .hero-vignette {

@@ -39,7 +39,7 @@ export default function HeroSection({
     }
 
     gsap.set(eyebrow, { opacity: 0, y: 18 });
-    gsap.set([line1, line2, line3], { y: "110%" });
+    gsap.set([line1, line2, line3], { y: "110%", opacity: 0 });
     gsap.set(sub, { opacity: 0, y: 16 });
     gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, scale: 0.94 });
   }, []);
@@ -76,28 +76,24 @@ export default function HeroSection({
 
     contentLayerRef.current?.classList.add("hero-content-layer--visible");
 
-    const lines = [line1, line2, line3];
-
     gsap.set(eyebrow, { opacity: 0, y: 18 });
-    gsap.set(lines, { y: "110%" });
+    gsap.set([line1, line2, line3], { y: "110%", opacity: 0 });
     gsap.set(sub, { opacity: 0, y: 16 });
     gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, scale: 0.94 });
 
-    const tl = gsap.timeline({ onComplete: () => onTransitionComplete?.() });
+    const tl = gsap.timeline({
+      delay: 0.15,
+      onComplete: () => onTransitionComplete?.(),
+    });
 
-    tl.to(eyebrow, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" })
-      .to(lines, { y: "0%", duration: 0.72, ease: "power3.out", stagger: 0.14 }, "-=0.15")
-      .to(sub, { opacity: 1, y: 0, duration: 0.48, ease: "power3.out" }, "-=0.2")
-      .to(
-        ctaPrimary,
-        { opacity: 1, scale: 1, duration: 0.45, ease: "power3.out" },
-        "-=0.15",
-      )
-      .to(
-        ctaSecondary,
-        { opacity: 1, scale: 1, duration: 0.45, ease: "power3.out" },
-        "-=0.28",
-      );
+    // Sequential cinematic reveal — one element after another
+    tl.to(eyebrow, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" })
+      .to(line1, { y: "0%", opacity: 1, duration: 0.85, ease: "expo.out" }, ">")
+      .to(line2, { y: "0%", opacity: 1, duration: 0.85, ease: "expo.out" }, ">")
+      .to(line3, { y: "0%", opacity: 1, duration: 0.85, ease: "expo.out" }, ">")
+      .to(sub, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, ">")
+      .to(ctaPrimary, { opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" }, ">")
+      .to(ctaSecondary, { opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" }, ">-0.12");
   }, [onRevealStart, onTransitionComplete]);
 
   useEffect(() => {
