@@ -168,16 +168,24 @@ body {
   min-height: 100%;
 }
 
-.hero-wave-canvas {
-  filter: blur(28px);
-  opacity: 0.52;
+.hero-field-canvas {
+  opacity: 0.62;
   mix-blend-mode: screen;
   pointer-events: none;
+  contain: strict;
 }
 
 .hero-arrow-canvas {
   opacity: 1;
   pointer-events: none;
+  contain: strict;
+}
+
+.hero-hover-canvas {
+  opacity: 1;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  contain: strict;
 }
 
 .hero-vignette {
