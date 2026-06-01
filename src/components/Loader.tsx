@@ -22,11 +22,12 @@ type LoaderProps = {
 /**
  * Cinematic preloader: dots drift, form a rotating ring, reveal the
  * ALPHABLOCK AI wordmark, then dissolve outward into the hero.
- * Total duration ~3.6s, 60fps via requestAnimationFrame.
+ * Total duration 4s, 60fps via requestAnimationFrame.
  */
 export default function Loader({ onComplete }: LoaderProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -79,7 +80,7 @@ export default function Loader({ onComplete }: LoaderProps) {
       y: Math.random() * h,
     }));
 
-    const DURATION = 3600;
+    const DURATION = 4000;
     const start = performance.now();
     let raf = 0;
 
@@ -94,9 +95,9 @@ export default function Loader({ onComplete }: LoaderProps) {
       ctx.fillStyle = "#010101";
       ctx.fillRect(0, 0, w, h);
 
-      const forming = ease(Math.min(p / 0.33, 1));
-      const identify = p > 0.33 ? ease(Math.min((p - 0.33) / 0.33, 1)) : 0;
-      const dissolve = p > 0.83 ? ease((p - 0.83) / 0.17) : 0;
+      const forming = ease(Math.min(p / 0.35, 1));
+      const identify = p > 0.35 ? ease(Math.min((p - 0.35) / 0.35, 1)) : 0;
+      const dissolve = p > 0.75 ? ease((p - 0.75) / 0.25) : 0;
 
       const rot = elapsed * 0.0006;
 
@@ -127,6 +128,10 @@ export default function Loader({ onComplete }: LoaderProps) {
         labelRef.current.style.transform = `scale(${0.94 + identify * 0.06})`;
       }
 
+      if (shellRef.current) {
+        shellRef.current.style.opacity = String(1 - dissolve * 0.35);
+      }
+
       if (p < 1) {
         raf = requestAnimationFrame(loop);
       } else {
@@ -145,7 +150,7 @@ export default function Loader({ onComplete }: LoaderProps) {
   }, [onComplete]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#010101]">
+    <div ref={shellRef} className="fixed inset-0 z-50 bg-[#010101]">
       <canvas ref={canvasRef} className="absolute inset-0" aria-hidden />
       <div
         ref={labelRef}

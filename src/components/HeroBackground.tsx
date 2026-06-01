@@ -1,15 +1,84 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { gsap } from "gsap";
+
+type HeroBackgroundProps = {
+  /** Enable arrow cursor interaction after content reveal. */
+  interactive?: boolean;
+  /** Fires when glow has settled (~5.8s absolute). */
+  onEnvironmentReady?: () => void;
+};
 
 /**
- * ASCII arrow field — a grid of monospace arrow glyphs that quietly drift in
- * slow waves and re-orient toward the cursor as it moves. Glyphs brighten and
- * shift to brand-blue near the pointer, creating a soft, alive texture that
- * matches the banner aesthetic. Calm by default, expressive on interaction.
+ * Canvas arrow field with bottom-center blue pool — matches the banner aesthetic.
+ * Cinematic entrance (pattern spread → glow activation) is handled via GSAP;
+ * mouse interaction is gated until `interactive` is true.
  */
-export function HeroBackground() {
+export function HeroBackground({ interactive = false, onEnvironmentReady }: HeroBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const baseRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
+  const vignetteRef = useRef<HTMLDivElement>(null);
+  const interactiveRef = useRef(interactive);
+
+  useEffect(() => {
+    interactiveRef.current = interactive;
+  }, [interactive]);
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const base = baseRef.current;
+    const glow = glowRef.current;
+    const canvasWrap = canvasWrapRef.current;
+    const vignette = vignetteRef.current;
+    if (!base || !glow || !canvasWrap || !vignette) return;
+
+    if (reduce) {
+      gsap.set([base, glow, canvasWrap, vignette], { opacity: 1, clearProps: "clipPath,scale" });
+      glow.classList.add("hero-glow--pulsing");
+      onEnvironmentReady?.();
+      return;
+    }
+
+    gsap.set(base, { opacity: 0 });
+    gsap.set(glow, { opacity: 0, scale: 0.5, transformOrigin: "50% 100%" });
+    gsap.set(canvasWrap, { opacity: 0, clipPath: "circle(0% at 50% 50%)" });
+    gsap.set(vignette, { opacity: 0 });
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        canvasWrap.style.clipPath = "inset(0)";
+        glow.classList.add("hero-glow--pulsing");
+        onEnvironmentReady?.();
+      },
+    });
+
+    // 4s–5s — environment formation
+    tl.to(base, { opacity: 1, duration: 0.35, ease: "power2.out" }, 0)
+      .to(canvasWrap, { opacity: 1, duration: 1, ease: "power2.out" }, 0)
+      .fromTo(
+        canvasWrap,
+        { clipPath: "circle(0% at 50% 50%)" },
+        { clipPath: "circle(90% at 22% 50%)", duration: 0.38, ease: "power2.inOut" },
+        0.05,
+      )
+      .to(
+        canvasWrap,
+        { clipPath: "circle(120% at 78% 50%)", duration: 0.38, ease: "power2.inOut" },
+        0.43,
+      )
+      .to(canvasWrap, { clipPath: "inset(0)", duration: 0.24, ease: "power2.out" }, 0.81)
+      .to(vignette, { opacity: 1, duration: 0.5, ease: "power2.out" }, 0.5);
+
+    // 5s–5.8s — background activation (glow pool)
+    tl.to(glow, { opacity: 1, scale: 1, duration: 0.85, ease: "power2.out" }, 1);
+
+    return () => {
+      tl.kill();
+    };
+  }, [onEnvironmentReady]);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -19,10 +88,10 @@ export function HeroBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const GLYPH = "↗";
-    const CELL = 22;
-    const FONT_PX = 36;
-    const RADIUS = 220;
+    const ARROW = 16;
+    const CELL = 12;
+    const RADIUS = 200;
+    const REST = -Math.PI / 4;
 
     let w = 0;
     let h = 0;
@@ -33,7 +102,7 @@ export function HeroBackground() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     let phase: Float32Array = new Float32Array(0);
-    let baseAlpha: Float32Array = new Float32Array(0);
+    let glow: Float32Array = new Float32Array(0);
 
     const build = () => {
       w = window.innerWidth;
@@ -51,10 +120,21 @@ export function HeroBackground() {
 
       const n = cols * rows;
       phase = new Float32Array(n);
-      baseAlpha = new Float32Array(n);
-      for (let i = 0; i < n; i++) {
-        phase[i] = Math.random() * Math.PI * 2;
-        baseAlpha[i] = 0.06 + Math.random() * 0.14;
+      glow = new Float32Array(n);
+
+      const gx = w * 0.5;
+      const gy = h * 1.08;
+      const gr = Math.hypot(w * 0.65, h * 0.95);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c;
+          phase[i] = Math.random() * Math.PI * 2;
+          const x = offsetX + c * CELL;
+          const y = offsetY + r * CELL;
+          const d = Math.hypot(x - gx, y - gy) / gr;
+          glow[i] = Math.max(0, 1 - d);
+        }
       }
     };
 
@@ -63,6 +143,7 @@ export function HeroBackground() {
 
     const mouse = { x: -9999, y: -9999, tx: -9999, ty: -9999, active: false };
     const onMove = (e: MouseEvent) => {
+      if (!interactiveRef.current) return;
       mouse.tx = e.clientX;
       mouse.ty = e.clientY;
       mouse.active = true;
@@ -78,31 +159,29 @@ export function HeroBackground() {
     let t = 0;
 
     const loop = () => {
-      if (!reduce) t += 0.014;
+      if (!reduce) t += 0.012;
 
       mouse.x += (mouse.tx - mouse.x) * 0.12;
       mouse.y += (mouse.ty - mouse.y) * 0.12;
 
       ctx.clearRect(0, 0, w, h);
-      ctx.font = `${FONT_PX}px var(--font-jetbrains), "JetBrains Mono", monospace`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const i = r * cols + c;
           const x = offsetX + c * CELL;
           const y = offsetY + r * CELL;
+          const g = glow[i];
 
-          const wave =
-            0.5 + 0.5 * Math.sin(t + phase[i] + c * 0.18 + r * 0.12);
-          const depth = 0.25 + 0.75 * (y / h);
-          let alpha = baseAlpha[i] * (0.55 + 0.45 * wave) * (0.4 + depth);
+          const twinkle = 0.5 + 0.5 * Math.sin(t * 1.6 + phase[i] * 3.1);
+          let alpha = (0.06 + g * 0.4) * (0.65 + 0.35 * twinkle);
 
-          let angle = -Math.PI / 4 + Math.sin(t * 0.5 + phase[i]) * 0.25;
-          let blue = depth;
+          let angle = REST;
+          let blue = 0.35 + g * 0.65;
 
-          if (!reduce && mouse.active) {
+          if (!reduce && interactiveRef.current && mouse.active) {
             const dx = x - mouse.x;
             const dy = y - mouse.y;
             const dist = Math.hypot(dx, dy);
@@ -110,20 +189,30 @@ export function HeroBackground() {
               const force = (1 - dist / RADIUS) ** 2;
               const target = Math.atan2(dy, dx);
               angle = angle * (1 - force) + target * force;
-              alpha = Math.min(0.95, alpha + force * 0.8);
-              blue = Math.min(1, blue + force * 0.9);
+              alpha = Math.min(0.98, alpha + force * 0.85);
+              blue = Math.min(1, blue + force * 0.6);
             }
           }
 
-          const cr = Math.round(255 - blue * (255 - 13));
-          const cg = Math.round(255 - blue * (255 - 45));
-          const cb = Math.round(255 - blue * (255 - 205));
+          const cr = Math.round(255 - blue * (255 - 90));
+          const cg = Math.round(255 - blue * (255 - 130));
+          const cb = 255;
 
           ctx.save();
           ctx.translate(x, y);
-          ctx.rotate(angle + Math.PI / 4);
-          ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, ${alpha})`;
-          ctx.fillText(GLYPH, 0, 0);
+          ctx.rotate(angle);
+          ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, ${alpha})`;
+          ctx.lineWidth = 1.4;
+          const a = ARROW / 2;
+          const head = ARROW * 0.42;
+          ctx.beginPath();
+          ctx.moveTo(-a, 0);
+          ctx.lineTo(a, 0);
+          ctx.moveTo(a, 0);
+          ctx.lineTo(a - head, -head);
+          ctx.moveTo(a, 0);
+          ctx.lineTo(a - head, head);
+          ctx.stroke();
           ctx.restore();
         }
       }
@@ -143,10 +232,26 @@ export function HeroBackground() {
 
   return (
     <>
-      <div className="hero-glow pointer-events-none absolute inset-0 z-0" aria-hidden />
-      <canvas
-        ref={canvasRef}
-        className="pointer-events-none absolute inset-0 z-0"
+      <div
+        ref={baseRef}
+        className="pointer-events-none absolute inset-0 z-0 bg-[oklch(0.13_0.04_264.5)] opacity-0"
+        aria-hidden
+      />
+      <div
+        ref={glowRef}
+        className="hero-glow pointer-events-none absolute inset-0 z-0 opacity-0"
+        aria-hidden
+      />
+      <div
+        ref={canvasWrapRef}
+        className="pointer-events-none absolute inset-0 z-0 opacity-0"
+        aria-hidden
+      >
+        <canvas ref={canvasRef} className="absolute inset-0" />
+      </div>
+      <div
+        ref={vignetteRef}
+        className="hero-vignette pointer-events-none absolute inset-0 z-0 opacity-0"
         aria-hidden
       />
     </>

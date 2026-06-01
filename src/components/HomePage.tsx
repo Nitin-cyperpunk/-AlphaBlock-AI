@@ -7,21 +7,29 @@ import Loader from "@/components/Loader";
 import SetupSection from "@/components/SetupSection";
 
 export default function HomePage() {
-  const [ready, setReady] = useState(false);
+  const [showHero, setShowHero] = useState(false);
+  const [interactive, setInteractive] = useState(false);
 
-  const handleBootComplete = useCallback(() => {
+  const handlePreloaderComplete = useCallback(() => {
     window.scrollTo(0, 0);
-    setReady(true);
+    setShowHero(true);
+  }, []);
+
+  const handleTransitionComplete = useCallback(() => {
+    setInteractive(true);
     requestAnimationFrame(() => ScrollTrigger.refresh());
   }, []);
 
   return (
     <>
-      {!ready && <Loader onComplete={handleBootComplete} />}
+      {!showHero && <Loader onComplete={handlePreloaderComplete} />}
 
-      {ready && (
+      {showHero && (
         <main className="relative bg-[#010101]">
-          <HeroSection />
+          <HeroSection
+            interactive={interactive}
+            onTransitionComplete={handleTransitionComplete}
+          />
           <SetupSection />
         </main>
       )}
