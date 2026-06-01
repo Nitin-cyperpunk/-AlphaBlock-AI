@@ -372,10 +372,11 @@ export default function SetupSection() {
   return (
     <section
       ref={sectionRef}
-      id="setup-experience"
-      aria-label="Setup Experience"
-      className="relative bg-[#010101] text-white"
+      id="product"
+      aria-label="Product experience"
+      className="relative scroll-mt-28 bg-[#010101] text-white"
     >
+      <div id="features" className="pointer-events-none absolute top-24 h-0 w-0" aria-hidden />
       <div
         ref={stageRef}
         className="relative flex h-screen w-full items-center justify-center overflow-hidden"
@@ -415,6 +416,7 @@ export default function SetupSection() {
           </div>
         </div>
       </div>
+      <div id="pricing" className="pointer-events-none h-px w-full scroll-mt-28" aria-hidden />
     </section>
   );
 }

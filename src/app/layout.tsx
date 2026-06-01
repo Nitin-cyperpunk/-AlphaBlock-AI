@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Anton, DM_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import SmoothScrollProvider from "@/components/SmoothScrollProvider";
+import { assets } from "@/lib/assets";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -31,6 +32,10 @@ export const metadata: Metadata = {
   title: "AlphaBlock AI — Intelligence Layer for On-Chain Traders",
   description:
     "Understand the market before the market moves. Institutional-grade intelligence for onchain trading.",
+  icons: {
+    icon: assets.faviconDark,
+    apple: assets.icon,
+  },
 };
 
 export default function RootLayout({
