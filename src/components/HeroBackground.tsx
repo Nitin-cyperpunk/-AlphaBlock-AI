@@ -9,20 +9,18 @@ import {
   type FieldParticle,
 } from "@/lib/field-particles";
 import {
+  DESKTOP_ARROW,
+  getHeroPerfConfig,
+  type HeroPerfConfig,
+} from "@/lib/hero-performance";
+import {
   maxRippleRadius,
   rippleAge,
   rippleAlpha,
   rippleBoostAt,
   ripplePhase,
   rippleRadius,
-  RIPPLE_SLOTS,
 } from "@/lib/intelligence-ripples";
-
-/** Canvas arrow grid — original field constants */
-const ARROW = 12;
-const CELL = 18;
-const CURSOR_RADIUS = 200;
-const REST = -Math.PI / 4;
 
 type HeroBackgroundProps = {
   interactive?: boolean;
@@ -34,7 +32,6 @@ const GLOW_MAX_OFFSET = 26;
 const HOVER_RADIUS = 220;
 const CURSOR_RIPPLE_COOLDOWN_MS = 550;
 
-/** Soft cursor field — brightens SVG arrows above via screen blend */
 function drawCursorField(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -55,13 +52,13 @@ function drawCursorField(
   ctx.fill();
 }
 
-/** Annulus ripple — soft band + 1px definition (no full-screen fills) */
 function drawRipple(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   r: number,
   alpha: number,
+  stroke: boolean,
 ) {
   if (alpha < 0.008 || r < 4) return;
 
@@ -80,11 +77,13 @@ function drawRipple(
   ctx.arc(cx, cy, inner, 0, TAU, true);
   ctx.fill("evenodd");
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, TAU);
-  ctx.strokeStyle = `rgba(150,180,255,${alpha * 0.09})`;
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  if (stroke) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, TAU);
+    ctx.strokeStyle = `rgba(150,180,255,${alpha * 0.09})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
 }
 
 /**
@@ -94,6 +93,7 @@ export function HeroBackground({
   interactive = false,
   onEnvironmentReady,
 }: HeroBackgroundProps) {
+  const heroRootRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLDivElement>(null);
   const blueWashRef = useRef<HTMLDivElement>(null);
   const glowShellRef = useRef<HTMLDivElement>(null);
@@ -119,7 +119,7 @@ export function HeroBackground({
   }, [onEnvironmentReady]);
 
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const perf = getHeroPerfConfig();
     const base = baseRef.current;
     const blueWash = blueWashRef.current;
     const glowStack = glowStackRef.current;
@@ -152,6 +152,20 @@ export function HeroBackground({
     const arrowWrap = arrowCanvas.parentElement;
     const hoverWrap = hoverCanvas.parentElement;
 
+    if (heroRootRef.current) {
+      heroRootRef.current.dataset.heroTier = perf.tier;
+    }
+
+    patternMain.style.backgroundSize = `${perf.patternMainSize}px ${perf.patternMainSize}px`;
+    patternDepth.style.backgroundSize = `${perf.patternDepthSize}px ${perf.patternDepthSize}px`;
+
+    if (!perf.drawCanvasArrows && arrowWrap) {
+      arrowWrap.style.display = "none";
+    }
+    if (!perf.drawHoverCanvas && hoverWrap) {
+      hoverWrap.style.display = "none";
+    }
+
     let finished = false;
     const finish = () => {
       if (finished) return;
@@ -160,13 +174,13 @@ export function HeroBackground({
       onReadyRef.current?.();
     };
 
-    if (reduce) {
+    if (perf.tier === "reduced") {
       gsap.set(
-        [base, blueWash, glowStack, patternStack, patternDepth, patternMain, fieldWrap, arrowWrap, hoverWrap, vignette],
+        [base, blueWash, glowStack, patternStack, patternDepth, patternMain, fieldWrap, vignette],
         { opacity: 1 },
       );
-      gsap.set(patternDepth, { opacity: 0.04 });
-      gsap.set(patternMain, { opacity: 0.18 });
+      gsap.set(patternDepth, { opacity: perf.patternDepthOpacity });
+      gsap.set(patternMain, { opacity: perf.patternMainOpacity });
       glowShell.classList.add("hero-glow--pulsing");
       finish();
       return;
@@ -179,9 +193,14 @@ export function HeroBackground({
     gsap.set(patternStack, { opacity: 1 });
     gsap.set(patternDepth, { opacity: 0 });
     gsap.set(patternMain, { opacity: 0 });
-    gsap.set(arrowWrap, { opacity: 0 });
-    gsap.set(hoverWrap, { opacity: 0 });
     gsap.set(vignette, { opacity: 0 });
+
+    if (perf.drawCanvasArrows && arrowWrap) {
+      gsap.set(arrowWrap, { opacity: 0, display: "block" });
+    }
+    if (perf.drawHoverCanvas && hoverWrap) {
+      gsap.set(hoverWrap, { opacity: 0, display: "block" });
+    }
 
     const fallback = window.setTimeout(finish, 3200);
 
@@ -196,11 +215,25 @@ export function HeroBackground({
     tl.to(blueWash, { opacity: 1, duration: 0.5, ease: "power2.out" })
       .to(glowStack, { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }, "-=0.15")
       .to(fieldWrap, { opacity: 1, duration: 0.9, ease: "power2.out" }, "-=0.5")
-      .to(patternDepth, { opacity: 0.04, duration: 0.75, ease: "power2.out" }, "-=0.55")
-      .to(patternMain, { opacity: 0.18, duration: 0.75, ease: "power2.out" }, "-=0.7")
-      .to(arrowWrap, { opacity: 1, duration: 0.75, ease: "power2.out" }, "-=0.65")
-      .to(hoverWrap, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.5")
-      .to(vignette, { opacity: 1, duration: 0.5, ease: "power2.out" }, "-=0.35");
+      .to(
+        patternDepth,
+        { opacity: perf.patternDepthOpacity, duration: 0.75, ease: "power2.out" },
+        "-=0.55",
+      )
+      .to(
+        patternMain,
+        { opacity: perf.patternMainOpacity, duration: 0.75, ease: "power2.out" },
+        "-=0.7",
+      );
+
+    if (perf.drawCanvasArrows && arrowWrap) {
+      tl.to(arrowWrap, { opacity: 1, duration: 0.75, ease: "power2.out" }, "-=0.65");
+    }
+    if (perf.drawHoverCanvas && hoverWrap) {
+      tl.to(hoverWrap, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.5");
+    }
+
+    tl.to(vignette, { opacity: 1, duration: 0.5, ease: "power2.out" }, "-=0.35");
 
     return () => {
       window.clearTimeout(fallback);
@@ -209,10 +242,10 @@ export function HeroBackground({
   }, []);
 
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const canvas = fieldCanvasRef.current;
     const arrowCanvas = arrowCanvasRef.current;
     const hoverCanvas = hoverCanvasRef.current;
+    const heroRoot = heroRootRef.current;
     if (!canvas || !arrowCanvas || !hoverCanvas) return;
 
     const ctx = canvas.getContext("2d", { alpha: true });
@@ -220,7 +253,7 @@ export function HeroBackground({
     const hoverCtx = hoverCanvas.getContext("2d", { alpha: true });
     if (!ctx || !arrowCtx || !hoverCtx) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+    let perf: HeroPerfConfig = getHeroPerfConfig();
     let w = 0;
     let h = 0;
     let cx = 0;
@@ -235,33 +268,44 @@ export function HeroBackground({
     let particles: FieldParticle[] = [];
     let t = 0;
     let lastNow = performance.now();
+    let lastFrame = 0;
 
     const mouse = { x: -9999, y: -9999, tx: -9999, ty: -9999, active: false };
     const cursor = { x: -9999, y: -9999, strength: 0 };
     const cursorRipples: { x: number; y: number; born: number }[] = [];
     let lastCursorRipple = 0;
 
-    const resize = () => {
-      w = window.innerWidth;
-      h = window.innerHeight;
-      cx = w * 0.5;
-      cy = h * 0.48;
-      maxR = maxRippleRadius(w, h);
-      const resizeOne = (c: HTMLCanvasElement, cctx: CanvasRenderingContext2D) => {
-        c.width = Math.floor(w * dpr);
-        c.height = Math.floor(h * dpr);
-        c.style.width = `${w}px`;
-        c.style.height = `${h}px`;
-        cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      };
-      resizeOne(canvas, ctx);
-      resizeOne(arrowCanvas, arrowCtx);
-      resizeOne(hoverCanvas, hoverCtx);
+    let pageVisible = document.visibilityState === "visible";
+    let heroVisible = true;
+    let raf = 0;
+    const epoch = performance.now();
 
-      cols = Math.ceil(w / CELL) + 1;
-      rows = Math.ceil(h / CELL) + 1;
-      offsetX = (w - (cols - 1) * CELL) / 2;
-      offsetY = (h - (rows - 1) * CELL) / 2;
+    const resizeOne = (c: HTMLCanvasElement, cctx: CanvasRenderingContext2D) => {
+      c.width = Math.floor(w * perf.dpr);
+      c.height = Math.floor(h * perf.dpr);
+      c.style.width = `${w}px`;
+      c.style.height = `${h}px`;
+      cctx.setTransform(perf.dpr, 0, 0, perf.dpr, 0, 0);
+    };
+
+    const applyPatternLayout = () => {
+      const patternMain = patternMainRef.current;
+      const patternDepth = patternDepthRef.current;
+      if (patternMain) {
+        patternMain.style.backgroundSize = `${perf.patternMainSize}px ${perf.patternMainSize}px`;
+      }
+      if (patternDepth) {
+        patternDepth.style.backgroundSize = `${perf.patternDepthSize}px ${perf.patternDepthSize}px`;
+      }
+    };
+
+    const buildArrowGrid = () => {
+      if (!perf.drawCanvasArrows) return;
+      const cell = perf.cellSize;
+      cols = Math.ceil(w / cell) + 1;
+      rows = Math.ceil(h / cell) + 1;
+      offsetX = (w - (cols - 1) * cell) / 2;
+      offsetY = (h - (rows - 1) * cell) / 2;
       const n = cols * rows;
       phase = new Float32Array(n);
       glow = new Float32Array(n);
@@ -270,14 +314,56 @@ export function HeroBackground({
         for (let c = 0; c < cols; c++) {
           const i = r * cols + c;
           phase[i] = Math.random() * Math.PI * 2;
-          const ax = offsetX + c * CELL;
-          const ay = offsetY + r * CELL;
+          const ax = offsetX + c * cell;
+          const ay = offsetY + r * cell;
           glow[i] = Math.max(0, 1 - (Math.hypot(ax - cx, ay - cy) / gr) ** 1.35);
         }
       }
+    };
 
-      const count = Math.min(200, Math.max(120, Math.floor((w * h) / 11_000)));
-      particles = buildFieldParticles(w, h, count);
+    const syncCanvasLayers = () => {
+      const arrowWrap = arrowCanvas.parentElement;
+      const hoverWrap = hoverCanvas.parentElement;
+      if (arrowWrap) {
+        if (perf.drawCanvasArrows) {
+          arrowWrap.style.display = "block";
+          if (arrowWrap.style.opacity === "0" || !arrowWrap.style.opacity) {
+            arrowWrap.style.opacity = "1";
+          }
+        } else {
+          arrowWrap.style.display = "none";
+        }
+      }
+      if (hoverWrap) {
+        if (perf.drawHoverCanvas) {
+          hoverWrap.style.display = "block";
+          if (hoverWrap.style.opacity === "0" || !hoverWrap.style.opacity) {
+            hoverWrap.style.opacity = "1";
+          }
+        } else {
+          hoverWrap.style.display = "none";
+        }
+      }
+    };
+
+    const resize = () => {
+      perf = getHeroPerfConfig();
+      if (heroRoot) heroRoot.dataset.heroTier = perf.tier;
+      syncCanvasLayers();
+      applyPatternLayout();
+
+      w = window.innerWidth;
+      h = window.innerHeight;
+      cx = w * 0.5;
+      cy = h * 0.48;
+      maxR = maxRippleRadius(w, h);
+
+      resizeOne(canvas, ctx);
+      if (perf.drawCanvasArrows) resizeOne(arrowCanvas, arrowCtx);
+      if (perf.drawHoverCanvas) resizeOne(hoverCanvas, hoverCtx);
+
+      buildArrowGrid();
+      particles = buildFieldParticles(w, h, perf.particleCap);
 
       glowPosRef.current.x = cx;
       glowPosRef.current.y = cy;
@@ -288,40 +374,153 @@ export function HeroBackground({
     resize();
     window.addEventListener("resize", resize);
 
-    const onMove = (e: MouseEvent) => {
+    const onVisibility = () => {
+      pageVisible = document.visibilityState === "visible";
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    let observer: IntersectionObserver | null = null;
+    if (heroRoot) {
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          heroVisible = entry?.isIntersecting ?? true;
+        },
+        { threshold: 0.05 },
+      );
+      observer.observe(heroRoot);
+    }
+
+    const applyPointer = (clientX: number, clientY: number) => {
+      if (!perf.enablePointerHover) return;
       const gp = glowPosRef.current;
-      const ox = Math.max(-GLOW_MAX_OFFSET, Math.min(GLOW_MAX_OFFSET, (e.clientX - cx) * 0.032));
-      const oy = Math.max(-GLOW_MAX_OFFSET, Math.min(GLOW_MAX_OFFSET, (e.clientY - cy) * 0.032));
+      const ox = Math.max(-GLOW_MAX_OFFSET, Math.min(GLOW_MAX_OFFSET, (clientX - cx) * 0.032));
+      const oy = Math.max(-GLOW_MAX_OFFSET, Math.min(GLOW_MAX_OFFSET, (clientY - cy) * 0.032));
       gp.tx = cx + ox;
       gp.ty = cy + oy;
-      mouse.tx = e.clientX;
-      mouse.ty = e.clientY;
+      mouse.tx = clientX;
+      mouse.ty = clientY;
       mouse.active = true;
 
-      if (interactiveRef.current && !reduce) {
+      if (interactiveRef.current && perf.drawHoverCanvas) {
         const now = performance.now();
         if (now - lastCursorRipple > CURSOR_RIPPLE_COOLDOWN_MS) {
           lastCursorRipple = now;
-          cursorRipples.push({ x: e.clientX, y: e.clientY, born: now });
+          cursorRipples.push({ x: clientX, y: clientY, born: now });
           if (cursorRipples.length > 4) cursorRipples.shift();
         }
       }
+    };
+
+    const onMove = (e: MouseEvent) => {
+      applyPointer(e.clientX, e.clientY);
     };
 
     const onLeave = () => {
       mouse.active = false;
     };
 
+    const onTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (touch) applyPointer(touch.clientX, touch.clientY);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (touch) applyPointer(touch.clientX, touch.clientY);
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) mouse.active = false;
+    };
+
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseout", onLeave);
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
 
-    let raf = 0;
-    const epoch = performance.now();
+    const drawArrowGrid = (elapsed: number) => {
+      if (!perf.drawCanvasArrows) return;
+
+      const cell = perf.cellSize;
+      const arrow = perf.arrowSize;
+      const cursorRadius = perf.cursorRadius;
+      const rest = perf.restAngle;
+
+      arrowCtx.clearRect(0, 0, w, h);
+      arrowCtx.lineCap = "round";
+      arrowCtx.lineJoin = "round";
+
+      const half = arrow / 2;
+      const head = arrow * 0.42;
+      const lineWidth = (arrow / DESKTOP_ARROW) * 1.15;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const idx = row * cols + col;
+          const x = offsetX + col * cell;
+          const y = offsetY + row * cell;
+          const g = glow[idx];
+          const dist = Math.hypot(x - cx, y - cy);
+          const waves = rippleBoostAt(dist, elapsed, maxR);
+          const twinkle = perf.enableTwinkle
+            ? 0.5 + 0.5 * Math.sin(t * 1.4 + phase[idx] * 3.1)
+            : 0.82;
+          let alpha = (0.035 + g * g * 0.48) * (0.68 + 0.28 * twinkle);
+          alpha = Math.min(0.95, alpha + waves * 0.42);
+
+          let angle = rest;
+          let blue = 0.2 + g * 0.75 + waves * 0.25;
+
+          if (interactiveRef.current && mouse.active && perf.enablePointerHover) {
+            const dx = x - mouse.x;
+            const dy = y - mouse.y;
+            const md = Math.hypot(dx, dy);
+            if (md < cursorRadius) {
+              const force = (1 - md / cursorRadius) ** 2;
+              angle = angle * (1 - force) + Math.atan2(dy, dx) * force;
+              alpha = Math.min(0.98, alpha + force * 0.72);
+              blue = Math.min(1, blue + force * 0.52);
+            }
+          }
+
+          if (alpha < 0.025) continue;
+
+          const cr = Math.round(255 - blue * (255 - 100));
+          const cg = Math.round(255 - blue * (255 - 145));
+          const cb = Math.round(255 - blue * (255 - 255));
+
+          arrowCtx.save();
+          arrowCtx.translate(x, y);
+          arrowCtx.rotate(angle);
+          arrowCtx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+          arrowCtx.lineWidth = lineWidth;
+          arrowCtx.beginPath();
+          arrowCtx.moveTo(-half, 0);
+          arrowCtx.lineTo(half, 0);
+          arrowCtx.moveTo(half, 0);
+          arrowCtx.lineTo(half - head, -head);
+          arrowCtx.moveTo(half, 0);
+          arrowCtx.lineTo(half - head, head);
+          arrowCtx.stroke();
+          arrowCtx.restore();
+        }
+      }
+    };
 
     const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
+
+      if (!pageVisible || !heroVisible) return;
+
+      if (now - lastFrame < perf.frameIntervalMs) return;
+      lastFrame = now;
+
       const dt = Math.min(0.032, (now - lastNow) / 1000);
       lastNow = now;
-      if (!reduce) t += dt;
+
+      if (perf.tier !== "reduced") t += dt;
 
       const elapsed = now - epoch;
 
@@ -337,132 +536,79 @@ export function HeroBackground({
 
       ctx.clearRect(0, 0, w, h);
 
-      if (!reduce) {
-        for (let i = 0; i < RIPPLE_SLOTS; i++) {
+      if (perf.tier !== "reduced" && perf.rippleSlots > 0) {
+        for (let i = 0; i < perf.rippleSlots; i++) {
           const age = rippleAge(elapsed, i);
-          const phase = ripplePhase(age);
-          const alpha = rippleAlpha(phase);
-          const r = rippleRadius(phase, maxR);
-          drawRipple(ctx, cx, cy, r, alpha);
+          const ph = ripplePhase(age);
+          const alpha = rippleAlpha(ph);
+          const r = rippleRadius(ph, maxR);
+          drawRipple(ctx, cx, cy, r, alpha, perf.drawRippleStroke);
         }
 
-        mouse.x += (mouse.tx - mouse.x) * 0.14;
-        mouse.y += (mouse.ty - mouse.y) * 0.14;
+        if (perf.particleCap > 0) {
+          mouse.x += (mouse.tx - mouse.x) * 0.14;
+          mouse.y += (mouse.ty - mouse.y) * 0.14;
 
-        stepFieldParticles(
-          particles,
-          t,
-          false,
-          mouse.x,
-          mouse.y,
-          interactiveRef.current && mouse.active,
-        );
+          stepFieldParticles(
+            particles,
+            t,
+            false,
+            mouse.x,
+            mouse.y,
+            interactiveRef.current && mouse.active && perf.enablePointerHover,
+          );
 
-        for (const p of particles) {
-          const breath = 0.85 + Math.sin(t * 0.6 + p.phase) * 0.15;
-          let a = (0.06 + breath * 0.1) * (p.blue ? 1.1 : 1);
-          if (interactiveRef.current && mouse.active) {
-            const dist = Math.hypot(p.x - mouse.x, p.y - mouse.y);
-            if (dist < 200) {
-              a = Math.min(0.38, a * (1 + (1 - dist / 200) ** 1.5 * 0.4));
-            }
-          }
-          a = Math.min(0.32, a);
-          ctx.beginPath();
-          ctx.fillStyle = p.blue
-            ? `rgba(90,140,255,${a})`
-            : `rgba(255,255,255,${a})`;
-          ctx.arc(p.x, p.y, p.size, 0, TAU);
-          ctx.fill();
-        }
-
-        arrowCtx.clearRect(0, 0, w, h);
-        arrowCtx.lineCap = "round";
-        arrowCtx.lineJoin = "round";
-
-        const a = ARROW / 2;
-        const head = ARROW * 0.42;
-
-        for (let row = 0; row < rows; row++) {
-          for (let col = 0; col < cols; col++) {
-            const idx = row * cols + col;
-            const x = offsetX + col * CELL;
-            const y = offsetY + row * CELL;
-            const g = glow[idx];
-            const dist = Math.hypot(x - cx, y - cy);
-            const waves = rippleBoostAt(dist, elapsed, maxR);
-            const twinkle = 0.5 + 0.5 * Math.sin(t * 1.4 + phase[idx] * 3.1);
-            let alpha = (0.035 + g * g * 0.48) * (0.68 + 0.28 * twinkle);
-            alpha = Math.min(0.95, alpha + waves * 0.42);
-
-            let angle = REST;
-            let blue = 0.2 + g * 0.75 + waves * 0.25;
-
-            if (interactiveRef.current && mouse.active) {
-              const dx = x - mouse.x;
-              const dy = y - mouse.y;
-              const md = Math.hypot(dx, dy);
-              if (md < CURSOR_RADIUS) {
-                const force = (1 - md / CURSOR_RADIUS) ** 2;
-                angle = angle * (1 - force) + Math.atan2(dy, dx) * force;
-                alpha = Math.min(0.98, alpha + force * 0.72);
-                blue = Math.min(1, blue + force * 0.52);
+          for (const p of particles) {
+            const breath = 0.85 + Math.sin(t * 0.6 + p.phase) * 0.15;
+            let a = (0.06 + breath * 0.1) * (p.blue ? 1.1 : 1);
+            if (interactiveRef.current && mouse.active && perf.enablePointerHover) {
+              const dist = Math.hypot(p.x - mouse.x, p.y - mouse.y);
+              const r = perf.cursorRadius;
+              if (dist < r) {
+                a = Math.min(0.38, a * (1 + (1 - dist / r) ** 1.5 * 0.4));
               }
             }
-
-            if (alpha < 0.025) continue;
-
-            const cr = Math.round(255 - blue * (255 - 100));
-            const cg = Math.round(255 - blue * (255 - 145));
-            const cb = Math.round(255 - blue * (255 - 255));
-
-            arrowCtx.save();
-            arrowCtx.translate(x, y);
-            arrowCtx.rotate(angle);
-            arrowCtx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
-            arrowCtx.lineWidth = 1.15;
-            arrowCtx.beginPath();
-            arrowCtx.moveTo(-a, 0);
-            arrowCtx.lineTo(a, 0);
-            arrowCtx.moveTo(a, 0);
-            arrowCtx.lineTo(a - head, -head);
-            arrowCtx.moveTo(a, 0);
-            arrowCtx.lineTo(a - head, head);
-            arrowCtx.stroke();
-            arrowCtx.restore();
+            a = Math.min(0.32, a);
+            ctx.beginPath();
+            ctx.fillStyle = p.blue
+              ? `rgba(90,140,255,${a})`
+              : `rgba(255,255,255,${a})`;
+            ctx.arc(p.x, p.y, p.size, 0, TAU);
+            ctx.fill();
           }
         }
       }
 
-      hoverCtx.clearRect(0, 0, w, h);
+      drawArrowGrid(elapsed);
 
-      if (!reduce && interactiveRef.current) {
-        cursor.x += (mouse.tx - cursor.x) * 0.1;
-        cursor.y += (mouse.ty - cursor.y) * 0.1;
-        const targetStrength = mouse.active ? 1 : 0;
-        cursor.strength += (targetStrength - cursor.strength) * 0.08;
+      if (perf.drawHoverCanvas) {
+        hoverCtx.clearRect(0, 0, w, h);
 
-        if (cursor.strength > 0.02) {
-          drawCursorField(hoverCtx, cursor.x, cursor.y, cursor.strength);
-        }
+        if (interactiveRef.current && perf.enablePointerHover) {
+          cursor.x += (mouse.tx - cursor.x) * 0.1;
+          cursor.y += (mouse.ty - cursor.y) * 0.1;
+          const targetStrength = mouse.active ? 1 : 0;
+          cursor.strength += (targetStrength - cursor.strength) * 0.08;
 
-        const nowHover = performance.now();
-        for (let i = cursorRipples.length - 1; i >= 0; i--) {
-          const rip = cursorRipples[i];
-          const age = nowHover - rip.born;
-          if (age > 2400) {
-            cursorRipples.splice(i, 1);
-            continue;
+          if (cursor.strength > 0.02) {
+            drawCursorField(hoverCtx, cursor.x, cursor.y, cursor.strength);
           }
-          const p = age / 2400;
-          const fade = (1 - p) ** 1.3;
-          const r = 30 + 140 * (1 - (1 - p) ** 2);
-          drawRipple(hoverCtx, rip.x, rip.y, r, fade * 0.55);
+
+          const nowHover = performance.now();
+          for (let i = cursorRipples.length - 1; i >= 0; i--) {
+            const rip = cursorRipples[i];
+            const age = nowHover - rip.born;
+            if (age > 2400) {
+              cursorRipples.splice(i, 1);
+              continue;
+            }
+            const p = age / 2400;
+            const fade = (1 - p) ** 1.3;
+            const r = 30 + 140 * (1 - (1 - p) ** 2);
+            drawRipple(hoverCtx, rip.x, rip.y, r, fade * 0.55, perf.drawRippleStroke);
+          }
         }
-
       }
-
-      raf = requestAnimationFrame(loop);
     };
 
     raf = requestAnimationFrame(loop);
@@ -472,33 +618,36 @@ export function HeroBackground({
       window.removeEventListener("resize", resize);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseout", onLeave);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+      document.removeEventListener("visibilitychange", onVisibility);
+      observer?.disconnect();
     };
   }, []);
 
-  /** Original SVG pattern vignette masks */
   const patternMainMask =
     "radial-gradient(circle at center, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.11) 30%, rgba(0,0,0,0.07) 60%, rgba(0,0,0,0.04) 100%)";
   const patternDepthMask =
     "radial-gradient(circle at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.12) 28%, rgba(0,0,0,0.05) 58%, rgba(0,0,0,0.03) 100%)";
 
   return (
-    <>
-      <div ref={baseRef} className="pointer-events-none absolute inset-0 z-0 bg-[#010101]" aria-hidden />
+    <div ref={heroRootRef} className="pointer-events-none absolute inset-0" aria-hidden>
+      <div ref={baseRef} className="absolute inset-0 z-0 bg-[#010101]" />
 
       <div
         ref={blueWashRef}
-        className="pointer-events-none absolute inset-0 z-[1] opacity-0"
+        className="absolute inset-0 z-[1] opacity-0"
         style={{
           background:
             "radial-gradient(circle at 50% 48%, rgb(8 19 70) 0%, rgb(4 8 28) 42%, rgb(1 1 1) 100%)",
         }}
-        aria-hidden
       />
 
       <div
         ref={glowShellRef}
-        className="hero-glow pointer-events-none absolute z-[2] -translate-x-1/2 -translate-y-1/2"
-        aria-hidden
+        className="hero-glow absolute z-[2] -translate-x-1/2 -translate-y-1/2"
       >
         <div ref={glowStackRef} className="hero-glow-stack opacity-0">
           <div className="hero-glow-bloom" aria-hidden />
@@ -508,14 +657,14 @@ export function HeroBackground({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-0 z-[3] opacity-0" aria-hidden>
+      <div className="absolute inset-0 z-[3] opacity-0">
         <canvas ref={fieldCanvasRef} className="hero-field-canvas absolute inset-0 h-full w-full" />
       </div>
 
-      <div ref={patternStackRef} className="hero-pattern-stack pointer-events-none absolute inset-0 z-[4]" aria-hidden>
+      <div ref={patternStackRef} className="hero-pattern-stack absolute inset-0 z-[4]">
         <div
           ref={patternDepthRef}
-          className="hero-pattern-layer pointer-events-none absolute inset-[-5%] opacity-0"
+          className="hero-pattern-layer absolute inset-[-5%] opacity-0"
           style={{
             backgroundImage: ARROW_PATTERN_URL,
             backgroundRepeat: "repeat",
@@ -528,7 +677,7 @@ export function HeroBackground({
         />
         <div
           ref={patternMainRef}
-          className="hero-pattern-layer pointer-events-none absolute inset-0 opacity-0"
+          className="hero-pattern-layer absolute inset-0 opacity-0"
           style={{
             backgroundImage: ARROW_PATTERN_URL,
             backgroundRepeat: "repeat",
@@ -539,15 +688,15 @@ export function HeroBackground({
         />
       </div>
 
-      <div className="pointer-events-none absolute inset-0 z-[5] opacity-0" aria-hidden>
+      <div className="absolute inset-0 z-[5] opacity-0">
         <canvas ref={arrowCanvasRef} className="hero-arrow-canvas absolute inset-0 h-full w-full" />
       </div>
 
-      <div className="pointer-events-none absolute inset-0 z-[6] opacity-0" aria-hidden>
+      <div className="absolute inset-0 z-[6] opacity-0">
         <canvas ref={hoverCanvasRef} className="hero-hover-canvas absolute inset-0 h-full w-full" />
       </div>
 
-      <div ref={vignetteRef} className="hero-vignette pointer-events-none absolute inset-0 z-[7] opacity-0" aria-hidden />
-    </>
+      <div ref={vignetteRef} className="hero-vignette absolute inset-0 z-[7] opacity-0" />
+    </div>
   );
 }

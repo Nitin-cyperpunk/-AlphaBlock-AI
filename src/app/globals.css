@@ -196,6 +196,34 @@ body {
   );
 }
 
+/* Lighter GPU load on phones — same stack, tuned blur */
+@media (max-width: 768px) {
+  .hero-glow-bloom {
+    filter: blur(40px);
+  }
+
+  .hero-glow-core {
+    filter: blur(40px);
+  }
+
+  .hero-glow-mid {
+    filter: blur(56px);
+  }
+
+  .hero-glow-outer {
+    filter: blur(72px);
+  }
+
+  .hero-field-canvas {
+    opacity: 0.55;
+  }
+}
+
+[data-hero-tier="mobile"] .hero-pattern-layer {
+  /* Sizes/opacities driven by JS from hero-performance; keep compositing crisp */
+  image-rendering: auto;
+}
+
 .hero-headline-line {
   padding-bottom: 0.06em;
 }
