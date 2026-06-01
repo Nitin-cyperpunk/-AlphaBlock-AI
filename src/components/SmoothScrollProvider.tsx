@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import Lenis from "lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { LenisContext } from "@/context/LenisContext";
 import "lenis/dist/lenis.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -15,10 +16,10 @@ type SmoothScrollProviderProps = {
 export default function SmoothScrollProvider({
   children,
 }: SmoothScrollProviderProps) {
-  const lenisRef = useRef<Lenis | null>(null);
+  const [lenis, setLenis] = useState<Lenis | null>(null);
 
   useEffect(() => {
-    const lenis = new Lenis({
+    const instance = new Lenis({
       duration: 1.15,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: "vertical",
@@ -28,28 +29,28 @@ export default function SmoothScrollProvider({
       infinite: false,
     });
 
-    lenisRef.current = lenis;
+    setLenis(instance);
 
-    lenis.on("scroll", ScrollTrigger.update);
+    instance.on("scroll", ScrollTrigger.update);
 
     const tickerCallback = (time: number) => {
-      lenis.raf(time * 1000);
+      instance.raf(time * 1000);
     };
 
     gsap.ticker.add(tickerCallback);
     gsap.ticker.lagSmoothing(0);
 
-    const onRefresh = () => lenis.resize();
+    const onRefresh = () => instance.resize();
     ScrollTrigger.addEventListener("refresh", onRefresh);
     ScrollTrigger.refresh();
 
     return () => {
       ScrollTrigger.removeEventListener("refresh", onRefresh);
       gsap.ticker.remove(tickerCallback);
-      lenis.destroy();
-      lenisRef.current = null;
+      instance.destroy();
+      setLenis(null);
     };
   }, []);
 
-  return <>{children}</>;
+  return <LenisContext.Provider value={lenis}>{children}</LenisContext.Provider>;
 }

@@ -78,34 +78,54 @@ body {
 
 /* Hero background */
 
-.hero-glow {
-  background:
-    radial-gradient(
-      ellipse 85% 65% at 50% 52%,
-      rgb(13 45 205 / 38%) 0%,
-      rgb(13 45 205 / 16%) 38%,
-      rgb(13 45 205 / 5%) 58%,
-      transparent 72%
-    ),
-    #010101;
-}
-
-/* Hero entrance */
-
-@keyframes hero-up {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
+@keyframes hero-glow-pulse {
+  0% {
+    transform: scale(1);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
-.hero-up {
-  opacity: 0;
-  animation: hero-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.hero-glow-orb {
+  background: radial-gradient(
+    circle,
+    rgb(13 45 205 / 68%) 0%,
+    rgb(13 45 205 / 38%) 18%,
+    rgb(13 45 205 / 16%) 42%,
+    transparent 72%
+  );
+  filter: blur(72px);
+  transform-origin: center center;
+}
+
+.hero-glow--pulsing .hero-glow-orb {
+  animation: hero-glow-pulse 10s ease-in-out infinite;
+}
+
+.hero-vignette {
+  background: radial-gradient(
+    ellipse 120% 100% at 50% 50%,
+    transparent 38%,
+    rgb(1 1 1 / 55%) 100%
+  );
+}
+
+.hero-headline-line {
+  padding-bottom: 0.06em;
+}
+
+.hero-content-layer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hero-content-layer--visible {
+  visibility: visible;
+  pointer-events: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -118,9 +138,7 @@ body {
     scroll-behavior: auto !important;
   }
 
-  .hero-up {
-    opacity: 1 !important;
-    transform: none !important;
+  .hero-glow--pulsing .hero-glow-orb {
     animation: none !important;
   }
 }

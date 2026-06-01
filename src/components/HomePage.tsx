@@ -4,26 +4,44 @@ import { useCallback, useState } from "react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeroSection from "@/components/HeroSection";
 import Loader from "@/components/Loader";
+import Navbar from "@/components/Navbar";
 import SetupSection from "@/components/SetupSection";
 
 export default function HomePage() {
-  const [ready, setReady] = useState(false);
+  const [showHero, setShowHero] = useState(false);
+  const [navVisible, setNavVisible] = useState(false);
+  const [interactive, setInteractive] = useState(false);
 
-  const handleBootComplete = useCallback(() => {
+  const handlePreloaderComplete = useCallback(() => {
     window.scrollTo(0, 0);
-    setReady(true);
+    setShowHero(true);
+  }, []);
+
+  const handleRevealStart = useCallback(() => {
+    setNavVisible(true);
+  }, []);
+
+  const handleTransitionComplete = useCallback(() => {
+    setInteractive(true);
     requestAnimationFrame(() => ScrollTrigger.refresh());
   }, []);
 
   return (
     <>
-      {!ready && <Loader onComplete={handleBootComplete} />}
+      {!showHero && <Loader onComplete={handlePreloaderComplete} />}
 
-      {ready && (
-        <main className="relative bg-[#010101]">
-          <HeroSection />
-          <SetupSection />
-        </main>
+      {showHero && (
+        <>
+          <Navbar visible={navVisible} />
+          <main className="relative bg-[#010101]">
+            <HeroSection
+              interactive={interactive}
+              onRevealStart={handleRevealStart}
+              onTransitionComplete={handleTransitionComplete}
+            />
+            <SetupSection />
+          </main>
+        </>
       )}
     </>
   );
