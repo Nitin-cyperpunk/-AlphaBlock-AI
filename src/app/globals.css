@@ -82,10 +82,10 @@ body {
   0%,
   100% {
     transform: scale(1);
-    opacity: 0.92;
+    opacity: 0.95;
   }
   50% {
-    transform: scale(1.035);
+    transform: scale(1.04);
     opacity: 1;
   }
 }
@@ -99,63 +99,94 @@ body {
   transform-origin: center center;
 }
 
-.hero-glow-bloom,
 .hero-glow-core,
 .hero-glow-mid,
 .hero-glow-outer {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
   border-radius: 50%;
   pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
-.hero-glow-bloom {
-  background: radial-gradient(
-    circle,
-    rgb(13 45 205 / 42%) 0%,
-    rgb(13 45 205 / 22%) 22%,
-    rgb(13 45 205 / 8%) 48%,
-    transparent 70%
-  );
-  filter: blur(56px);
-  transform: scale(1.08);
-}
-
+/* Volumetric stack — #0D2DCD */
 .hero-glow-core {
+  width: 500px;
+  height: 500px;
   background: radial-gradient(
     circle,
-    rgb(13 45 205 / 38%) 0%,
-    rgb(13 45 205 / 22%) 26%,
-    rgb(13 45 205 / 10%) 48%,
-    transparent 62%
+    rgb(13 45 205 / 25%) 0%,
+    rgb(13 45 205 / 12%) 38%,
+    transparent 68%
   );
-  filter: blur(52px);
+  filter: blur(42px);
 }
 
 .hero-glow-mid {
+  width: 900px;
+  height: 900px;
   background: radial-gradient(
     circle,
-    rgb(13 45 205 / 22%) 0%,
-    rgb(13 45 205 / 14%) 34%,
-    rgb(13 45 205 / 6%) 55%,
+    rgb(13 45 205 / 12%) 0%,
+    rgb(13 45 205 / 6%) 42%,
     transparent 72%
   );
-  filter: blur(80px);
+  filter: blur(64px);
 }
 
 .hero-glow-outer {
+  width: 1400px;
+  height: 1400px;
   background: radial-gradient(
     circle,
-    rgb(13 45 205 / 10%) 0%,
-    rgb(13 45 205 / 6%) 40%,
-    rgb(13 45 205 / 3%) 58%,
-    transparent 82%
+    rgb(13 45 205 / 5%) 0%,
+    rgb(13 45 205 / 2.5%) 48%,
+    transparent 78%
   );
-  filter: blur(110px);
+  filter: blur(88px);
 }
 
 .hero-glow--pulsing .hero-glow-stack {
-  animation: hero-glow-breathe 10s ease-in-out infinite;
+  animation: hero-glow-breathe 10s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  will-change: transform, opacity;
+}
+
+/* Atmospheric depth — left / right fog */
+.hero-fog {
+  overflow: hidden;
+}
+
+.hero-fog-left,
+.hero-fog-right {
+  position: absolute;
+  top: 50%;
+  width: min(1200px, 95vw);
+  height: min(1200px, 85vh);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translateY(-50%);
+  filter: blur(100px);
+}
+
+.hero-fog-left {
+  left: -28%;
+  background: radial-gradient(
+    circle,
+    rgb(13 45 205 / 3%) 0%,
+    rgb(13 45 205 / 1.5%) 35%,
+    transparent 68%
+  );
+}
+
+.hero-fog-right {
+  right: -28%;
+  background: radial-gradient(
+    circle,
+    rgb(13 45 205 / 4%) 0%,
+    rgb(13 45 205 / 2%) 35%,
+    transparent 68%
+  );
 }
 
 .hero-pattern-stack {
@@ -169,7 +200,7 @@ body {
 }
 
 .hero-field-canvas {
-  opacity: 0.62;
+  opacity: 0.74;
   mix-blend-mode: screen;
   pointer-events: none;
   contain: strict;
@@ -198,24 +229,20 @@ body {
 
 /* Lighter GPU load on phones — same stack, tuned blur */
 @media (max-width: 768px) {
-  .hero-glow-bloom {
-    filter: blur(40px);
-  }
-
   .hero-glow-core {
-    filter: blur(40px);
+    filter: blur(36px);
   }
 
   .hero-glow-mid {
-    filter: blur(56px);
+    filter: blur(52px);
   }
 
   .hero-glow-outer {
-    filter: blur(72px);
+    filter: blur(68px);
   }
 
   .hero-field-canvas {
-    opacity: 0.55;
+    opacity: 0.66;
   }
 }
 

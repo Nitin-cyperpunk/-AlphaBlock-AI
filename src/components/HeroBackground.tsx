@@ -14,6 +14,7 @@ import {
   type HeroPerfConfig,
 } from "@/lib/hero-performance";
 import {
+  ambientWaveStrength,
   maxRippleRadius,
   rippleAge,
   rippleAlpha,
@@ -21,6 +22,11 @@ import {
   ripplePhase,
   rippleRadius,
 } from "@/lib/intelligence-ripples";
+import {
+  isSideClusterX,
+  sideClusterWeight,
+  SIDE_CLUSTER_RADIUS,
+} from "@/lib/hero-side-zones";
 
 type HeroBackgroundProps = {
   interactive?: boolean;
@@ -28,9 +34,9 @@ type HeroBackgroundProps = {
 };
 
 const TAU = Math.PI * 2;
-const GLOW_MAX_OFFSET = 26;
 const HOVER_RADIUS = 220;
-const CURSOR_RIPPLE_COOLDOWN_MS = 550;
+const CURSOR_RIPPLE_COOLDOWN_MS = 520;
+const CURSOR_RIPPLE_LIFETIME_MS = 1500;
 
 function drawCursorField(
   ctx: CanvasRenderingContext2D,
@@ -60,15 +66,16 @@ function drawRipple(
   alpha: number,
   stroke: boolean,
 ) {
-  if (alpha < 0.008 || r < 4) return;
+  if (alpha < 0.006 || r < 4) return;
 
-  const band = 80;
+  const band = 95;
   const inner = Math.max(0, r - band);
-  const outer = r + band;
+  const outer = r + band * 1.05;
 
   const g = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
   g.addColorStop(0, "rgba(13,45,205,0)");
-  g.addColorStop(0.5, `rgba(120,160,255,${alpha * 0.14})`);
+  g.addColorStop(0.38, `rgba(120,160,255,${alpha * 0.19})`);
+  g.addColorStop(0.62, `rgba(13,45,205,${alpha * 0.09})`);
   g.addColorStop(1, "rgba(13,45,205,0)");
 
   ctx.fillStyle = g;
@@ -87,7 +94,8 @@ function drawRipple(
 }
 
 /**
- * Layer stack: black → glow → ripples/particles → SVG pattern → canvas arrows → hover → vignette
+ * Layer stack: black → blue wash → volumetric glow → fog → waves/particles →
+ * SVG pattern → canvas arrows → side hover ripples → vignette
  */
 export function HeroBackground({
   interactive = false,
@@ -96,6 +104,7 @@ export function HeroBackground({
   const heroRootRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLDivElement>(null);
   const blueWashRef = useRef<HTMLDivElement>(null);
+  const fogRef = useRef<HTMLDivElement>(null);
   const glowShellRef = useRef<HTMLDivElement>(null);
   const glowStackRef = useRef<HTMLDivElement>(null);
   const fieldCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -122,6 +131,7 @@ export function HeroBackground({
     const perf = getHeroPerfConfig();
     const base = baseRef.current;
     const blueWash = blueWashRef.current;
+    const fog = fogRef.current;
     const glowStack = glowStackRef.current;
     const glowShell = glowShellRef.current;
     const patternStack = patternStackRef.current;
@@ -135,6 +145,7 @@ export function HeroBackground({
     if (
       !base ||
       !blueWash ||
+      !fog ||
       !glowStack ||
       !glowShell ||
       !patternStack ||
@@ -176,7 +187,7 @@ export function HeroBackground({
 
     if (perf.tier === "reduced") {
       gsap.set(
-        [base, blueWash, glowStack, patternStack, patternDepth, patternMain, fieldWrap, vignette],
+        [base, blueWash, fog, glowStack, patternStack, patternDepth, patternMain, fieldWrap, vignette],
         { opacity: 1 },
       );
       gsap.set(patternDepth, { opacity: perf.patternDepthOpacity });
@@ -188,6 +199,7 @@ export function HeroBackground({
 
     gsap.set(base, { opacity: 1 });
     gsap.set(blueWash, { opacity: 0 });
+    gsap.set(fog, { opacity: 0 });
     gsap.set(glowStack, { opacity: 0, scale: 0.92 });
     gsap.set(fieldWrap, { opacity: 0 });
     gsap.set(patternStack, { opacity: 1 });
@@ -217,23 +229,23 @@ export function HeroBackground({
       .to(fieldWrap, { opacity: 1, duration: 0.9, ease: "power2.out" }, "-=0.5")
       .to(
         patternDepth,
-        { opacity: perf.patternDepthOpacity, duration: 0.75, ease: "power2.out" },
-        "-=0.55",
+        { opacity: perf.patternDepthOpacity, duration: 0.55, ease: "power2.out" },
+        "-=0.42",
       )
       .to(
         patternMain,
-        { opacity: perf.patternMainOpacity, duration: 0.75, ease: "power2.out" },
-        "-=0.7",
+        { opacity: perf.patternMainOpacity, duration: 0.55, ease: "power2.out" },
+        "-=0.48",
       );
 
     if (perf.drawCanvasArrows && arrowWrap) {
-      tl.to(arrowWrap, { opacity: 1, duration: 0.75, ease: "power2.out" }, "-=0.65");
+      tl.to(arrowWrap, { opacity: 1, duration: 0.5, ease: "power2.out" }, "-=0.45");
     }
     if (perf.drawHoverCanvas && hoverWrap) {
-      tl.to(hoverWrap, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.5");
+      tl.to(hoverWrap, { opacity: 1, duration: 0.45, ease: "power2.out" }, "-=0.4");
     }
 
-    tl.to(vignette, { opacity: 1, duration: 0.5, ease: "power2.out" }, "-=0.35");
+    tl.to(vignette, { opacity: 1, duration: 0.4, ease: "power2.out" }, "-=0.32");
 
     return () => {
       window.clearTimeout(fallback);
@@ -316,7 +328,9 @@ export function HeroBackground({
           phase[i] = Math.random() * Math.PI * 2;
           const ax = offsetX + c * cell;
           const ay = offsetY + r * cell;
-          glow[i] = Math.max(0, 1 - (Math.hypot(ax - cx, ay - cy) / gr) ** 1.35);
+          const centerGlow = Math.max(0, 1 - (Math.hypot(ax - cx, ay - cy) / gr) ** 1.35);
+          const sideW = sideClusterWeight(ax, w);
+          glow[i] = centerGlow * (1 - sideW * 0.72) + sideW * 0.88;
         }
       }
     };
@@ -391,22 +405,18 @@ export function HeroBackground({
     }
 
     const applyPointer = (clientX: number, clientY: number) => {
-      if (!perf.enablePointerHover) return;
-      const gp = glowPosRef.current;
-      const ox = Math.max(-GLOW_MAX_OFFSET, Math.min(GLOW_MAX_OFFSET, (clientX - cx) * 0.032));
-      const oy = Math.max(-GLOW_MAX_OFFSET, Math.min(GLOW_MAX_OFFSET, (clientY - cy) * 0.032));
-      gp.tx = cx + ox;
-      gp.ty = cy + oy;
       mouse.tx = clientX;
       mouse.ty = clientY;
       mouse.active = true;
+
+      if (!perf.enablePointerHover || !isSideClusterX(clientX, w)) return;
 
       if (interactiveRef.current && perf.drawHoverCanvas) {
         const now = performance.now();
         if (now - lastCursorRipple > CURSOR_RIPPLE_COOLDOWN_MS) {
           lastCursorRipple = now;
           cursorRipples.push({ x: clientX, y: clientY, born: now });
-          if (cursorRipples.length > 4) cursorRipples.shift();
+          if (cursorRipples.length > 3) cursorRipples.shift();
         }
       }
     };
@@ -445,7 +455,6 @@ export function HeroBackground({
 
       const cell = perf.cellSize;
       const arrow = perf.arrowSize;
-      const cursorRadius = perf.cursorRadius;
       const rest = perf.restAngle;
 
       arrowCtx.clearRect(0, 0, w, h);
@@ -463,25 +472,32 @@ export function HeroBackground({
           const y = offsetY + row * cell;
           const g = glow[idx];
           const dist = Math.hypot(x - cx, y - cy);
-          const waves = rippleBoostAt(dist, elapsed, maxR);
+          const waves = rippleBoostAt(dist, elapsed, w, h);
           const twinkle = perf.enableTwinkle
             ? 0.5 + 0.5 * Math.sin(t * 1.4 + phase[idx] * 3.1)
             : 0.82;
           let alpha = (0.035 + g * g * 0.48) * (0.68 + 0.28 * twinkle);
-          alpha = Math.min(0.95, alpha + waves * 0.42);
+          alpha = Math.min(0.95, alpha + waves * 0.48);
 
           let angle = rest;
-          let blue = 0.2 + g * 0.75 + waves * 0.25;
+          let blue = 0.2 + g * 0.75 + waves * 0.28;
+          const waveScale = 1 + waves * 0.1;
 
-          if (interactiveRef.current && mouse.active && perf.enablePointerHover) {
+          if (
+            interactiveRef.current &&
+            mouse.active &&
+            perf.enablePointerHover &&
+            isSideClusterX(x, w)
+          ) {
             const dx = x - mouse.x;
             const dy = y - mouse.y;
             const md = Math.hypot(dx, dy);
-            if (md < cursorRadius) {
-              const force = (1 - md / cursorRadius) ** 2;
+            const sideR = SIDE_CLUSTER_RADIUS;
+            if (md < sideR) {
+              const force = (1 - md / sideR) ** 2;
               angle = angle * (1 - force) + Math.atan2(dy, dx) * force;
-              alpha = Math.min(0.98, alpha + force * 0.72);
-              blue = Math.min(1, blue + force * 0.52);
+              alpha = Math.min(0.98, alpha + force * 0.68);
+              blue = Math.min(1, blue + force * 0.48);
             }
           }
 
@@ -494,6 +510,7 @@ export function HeroBackground({
           arrowCtx.save();
           arrowCtx.translate(x, y);
           arrowCtx.rotate(angle);
+          arrowCtx.scale(waveScale, waveScale);
           arrowCtx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
           arrowCtx.lineWidth = lineWidth;
           arrowCtx.beginPath();
@@ -525,8 +542,8 @@ export function HeroBackground({
       const elapsed = now - epoch;
 
       const gp = glowPosRef.current;
-      gp.x += (gp.tx - gp.x) * 0.045;
-      gp.y += (gp.ty - gp.y) * 0.045;
+      gp.x += (cx - gp.x) * 0.06;
+      gp.y += (cy - gp.y) * 0.06;
 
       const shell = glowShellRef.current;
       if (shell) {
@@ -534,38 +551,46 @@ export function HeroBackground({
         shell.style.top = `${gp.y}px`;
       }
 
+      const patternMain = patternMainRef.current;
+      if (patternMain && perf.tier !== "reduced") {
+        const ambient = ambientWaveStrength(elapsed);
+        patternMain.style.opacity = String(perf.patternMainOpacity + ambient * 0.035);
+      }
+
       ctx.clearRect(0, 0, w, h);
 
       if (perf.tier !== "reduced" && perf.rippleSlots > 0) {
         for (let i = 0; i < perf.rippleSlots; i++) {
           const age = rippleAge(elapsed, i);
-          const ph = ripplePhase(age);
+          const ph = ripplePhase(age, i);
           const alpha = rippleAlpha(ph);
-          const r = rippleRadius(ph, maxR);
-          drawRipple(ctx, cx, cy, r, alpha, perf.drawRippleStroke);
+          const r = rippleRadius(ph, maxR, i);
+          drawRipple(ctx, cx, cy, r, alpha, false);
         }
 
         if (perf.particleCap > 0) {
-          mouse.x += (mouse.tx - mouse.x) * 0.14;
-          mouse.y += (mouse.ty - mouse.y) * 0.14;
+          mouse.x += (mouse.tx - mouse.x) * 0.12;
+          mouse.y += (mouse.ty - mouse.y) * 0.12;
 
-          stepFieldParticles(
-            particles,
-            t,
-            false,
-            mouse.x,
-            mouse.y,
-            interactiveRef.current && mouse.active && perf.enablePointerHover,
-          );
+          const pointerOn =
+            interactiveRef.current &&
+            mouse.active &&
+            perf.enablePointerHover &&
+            isSideClusterX(mouse.x, w);
+
+          stepFieldParticles(particles, t, false, mouse.x, mouse.y, pointerOn, w);
 
           for (const p of particles) {
             const breath = 0.85 + Math.sin(t * 0.6 + p.phase) * 0.15;
-            let a = (0.06 + breath * 0.1) * (p.blue ? 1.1 : 1);
-            if (interactiveRef.current && mouse.active && perf.enablePointerHover) {
+            const opacityDrift = 0.95 + Math.sin(t * 0.4 + p.driftPhase) * 0.05;
+            let a = (0.06 + breath * 0.1) * (p.blue ? 1.1 : 1) * p.opacityBase * opacityDrift;
+            if (pointerOn) {
               const dist = Math.hypot(p.x - mouse.x, p.y - mouse.y);
-              const r = perf.cursorRadius;
-              if (dist < r) {
-                a = Math.min(0.38, a * (1 + (1 - dist / r) ** 1.5 * 0.4));
+              if (dist < SIDE_CLUSTER_RADIUS) {
+                a = Math.min(
+                  0.38,
+                  a * (1 + (1 - dist / SIDE_CLUSTER_RADIUS) ** 1.5 * 0.45),
+                );
               }
             }
             a = Math.min(0.32, a);
@@ -585,27 +610,28 @@ export function HeroBackground({
         hoverCtx.clearRect(0, 0, w, h);
 
         if (interactiveRef.current && perf.enablePointerHover) {
-          cursor.x += (mouse.tx - cursor.x) * 0.1;
-          cursor.y += (mouse.ty - cursor.y) * 0.1;
-          const targetStrength = mouse.active ? 1 : 0;
-          cursor.strength += (targetStrength - cursor.strength) * 0.08;
+          const sideActive = mouse.active && isSideClusterX(mouse.x, w);
+          cursor.x += (mouse.tx - cursor.x) * 0.09;
+          cursor.y += (mouse.ty - cursor.y) * 0.09;
+          const targetStrength = sideActive ? 1 : 0;
+          cursor.strength += (targetStrength - cursor.strength) * 0.07;
 
-          if (cursor.strength > 0.02) {
-            drawCursorField(hoverCtx, cursor.x, cursor.y, cursor.strength);
+          if (cursor.strength > 0.02 && sideActive) {
+            drawCursorField(hoverCtx, cursor.x, cursor.y, cursor.strength * 0.85);
           }
 
           const nowHover = performance.now();
           for (let i = cursorRipples.length - 1; i >= 0; i--) {
             const rip = cursorRipples[i];
             const age = nowHover - rip.born;
-            if (age > 2400) {
+            if (age > CURSOR_RIPPLE_LIFETIME_MS) {
               cursorRipples.splice(i, 1);
               continue;
             }
-            const p = age / 2400;
-            const fade = (1 - p) ** 1.3;
-            const r = 30 + 140 * (1 - (1 - p) ** 2);
-            drawRipple(hoverCtx, rip.x, rip.y, r, fade * 0.55, perf.drawRippleStroke);
+            const p = age / CURSOR_RIPPLE_LIFETIME_MS;
+            const fade = (1 - p) ** 1.35;
+            const r = 24 + 120 * (1 - (1 - p) ** 2);
+            drawRipple(hoverCtx, rip.x, rip.y, r, fade * 0.08, false);
           }
         }
       }
@@ -650,18 +676,22 @@ export function HeroBackground({
         className="hero-glow absolute z-[2] -translate-x-1/2 -translate-y-1/2"
       >
         <div ref={glowStackRef} className="hero-glow-stack opacity-0">
-          <div className="hero-glow-bloom" aria-hidden />
           <div className="hero-glow-core" aria-hidden />
           <div className="hero-glow-mid" aria-hidden />
           <div className="hero-glow-outer" aria-hidden />
         </div>
       </div>
 
-      <div className="absolute inset-0 z-[3] opacity-0">
+      <div ref={fogRef} className="hero-fog absolute inset-0 z-[3] opacity-0" aria-hidden>
+        <div className="hero-fog-left" />
+        <div className="hero-fog-right" />
+      </div>
+
+      <div className="absolute inset-0 z-[4] opacity-0">
         <canvas ref={fieldCanvasRef} className="hero-field-canvas absolute inset-0 h-full w-full" />
       </div>
 
-      <div ref={patternStackRef} className="hero-pattern-stack absolute inset-0 z-[4]">
+      <div ref={patternStackRef} className="hero-pattern-stack absolute inset-0 z-[5]">
         <div
           ref={patternDepthRef}
           className="hero-pattern-layer absolute inset-[-5%] opacity-0"
@@ -688,15 +718,15 @@ export function HeroBackground({
         />
       </div>
 
-      <div className="absolute inset-0 z-[5] opacity-0">
+      <div className="absolute inset-0 z-[6] opacity-0">
         <canvas ref={arrowCanvasRef} className="hero-arrow-canvas absolute inset-0 h-full w-full" />
       </div>
 
-      <div className="absolute inset-0 z-[6] opacity-0">
+      <div className="absolute inset-0 z-[7] opacity-0">
         <canvas ref={hoverCanvasRef} className="hero-hover-canvas absolute inset-0 h-full w-full" />
       </div>
 
-      <div ref={vignetteRef} className="hero-vignette absolute inset-0 z-[7] opacity-0" />
+      <div ref={vignetteRef} className="hero-vignette absolute inset-0 z-[8] opacity-0" />
     </div>
   );
 }
