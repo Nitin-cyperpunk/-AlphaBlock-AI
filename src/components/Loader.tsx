@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getHeroPerfConfig } from "@/lib/hero-performance";
 
 const COLOR_WHITE = "255, 255, 255";
 const COLOR_BLUE = "13, 45, 205";
@@ -49,7 +50,7 @@ export default function Loader({ onComplete }: LoaderProps) {
 
     let w = 0;
     let h = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = getHeroPerfConfig().dpr;
 
     const resize = () => {
       w = window.innerWidth;
