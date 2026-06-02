@@ -43,6 +43,40 @@ export function waveRadius(phase: number, index: number, scale: number): number 
   return (wave.startR + (wave.endR - wave.startR) * t) * scale;
 }
 
+export type WaveFront = { r: number; alpha: number };
+
+const BOOST_BAND = 110;
+
+/** Compute all wave fronts once per frame (avoids thousands of redundant passes). */
+export function getWaveFronts(elapsedMs: number, w: number, h: number): WaveFront[] {
+  const scale = waveViewportScale(w, h);
+  const fronts: WaveFront[] = [];
+  for (let i = 0; i < INTELLIGENCE_WAVE_COUNT; i++) {
+    const phase = wavePhase(elapsedMs, i);
+    fronts.push({
+      r: waveRadius(phase, i, scale),
+      alpha: waveAlpha(phase),
+    });
+  }
+  return fronts;
+}
+
+export function rippleBoostFromFronts(dist: number, fronts: WaveFront[]): number {
+  let boost = 0;
+  for (let i = 0; i < fronts.length; i++) {
+    const { r, alpha } = fronts[i];
+    if (alpha < 0.04) continue;
+
+    const d = dist - r;
+    if (d > BOOST_BAND || d < -BOOST_BAND * 0.55) continue;
+
+    const u = (d + BOOST_BAND * 0.55) / (BOOST_BAND * 1.55);
+    const bandStrength = Math.sin(Math.max(0, Math.min(1, u)) * Math.PI * 0.5) ** 1.15;
+    boost += bandStrength * alpha * 0.36;
+  }
+  return boost > 1 ? 1 : boost;
+}
+
 /** Subtle arrow / field boost as wave front passes (0–1) */
 export function rippleBoostAt(
   dist: number,
@@ -50,25 +84,13 @@ export function rippleBoostAt(
   w: number,
   h: number,
 ): number {
-  const scale = waveViewportScale(w, h);
-  let boost = 0;
+  return rippleBoostFromFronts(dist, getWaveFronts(elapsedMs, w, h));
+}
 
-  for (let i = 0; i < INTELLIGENCE_WAVE_COUNT; i++) {
-    const phase = wavePhase(elapsedMs, i);
-    const alpha = waveAlpha(phase);
-    if (alpha < 0.04) continue;
-
-    const r = waveRadius(phase, i, scale);
-    const band = 110;
-    const d = dist - r;
-    if (d > band || d < -band * 0.55) continue;
-
-    const u = (d + band * 0.55) / (band * 1.55);
-    const bandStrength = Math.sin(Math.max(0, Math.min(1, u)) * Math.PI * 0.5) ** 1.15;
-    boost += bandStrength * alpha * 0.36;
-  }
-
-  return Math.min(1, boost);
+export function ambientFromFronts(fronts: WaveFront[]): number {
+  let sum = 0;
+  for (let i = 0; i < fronts.length; i++) sum += fronts[i].alpha;
+  return sum / fronts.length;
 }
 
 /** Average wave energy for ambient SVG pattern pulse */

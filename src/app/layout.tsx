@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import { Anton, DM_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Anton, Geist, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import SmoothScrollProvider from "@/components/SmoothScrollProvider";
 import { assets } from "@/lib/assets";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
 });
 
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument",
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
   subsets: ["latin"],
   weight: "400",
-  style: ["normal", "italic"],
+  style: ["italic"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -46,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${dmSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} ${anton.variable} antialiased`}
+        className={`${geist.variable} ${playfair.variable} ${jetbrainsMono.variable} ${anton.variable} font-sans antialiased`}
       >
         <SmoothScrollProvider>{children}</SmoothScrollProvider>
       </body>

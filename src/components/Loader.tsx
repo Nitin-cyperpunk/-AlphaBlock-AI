@@ -1,10 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef } from "react";
-import { getHeroPerfConfig } from "@/lib/hero-performance";
+import { assets } from "@/lib/assets";
 
 const COLOR_WHITE = "255, 255, 255";
 const COLOR_BLUE = "13, 45, 205";
+
+const ASCII_POOL = ["@", "#", "$", "%", "&", "+", "=", "/", "\\", "X", "x", "0", "8", "S"] as const;
+
+const MONO_FONT =
+  'var(--font-jetbrains), ui-monospace, "JetBrains Mono", monospace';
 
 interface Dot {
   angle: number;
@@ -14,16 +20,21 @@ interface Dot {
   speed: number;
   blue: boolean;
   opacity: number;
+  char: string;
 }
 
 type LoaderProps = {
   onComplete: () => void;
 };
 
+function pickChar(): string {
+  return ASCII_POOL[(Math.random() * ASCII_POOL.length) | 0]!;
+}
+
 /**
- * Cinematic preloader: dots drift, form a rotating ring, reveal the
- * ALPHABLOCK AI wordmark, then dissolve outward into the hero.
- * Total duration 4s, 60fps via requestAnimationFrame.
+ * Cinematic preloader: ASCII drift, form a rotating ring, reveal logo,
+ * then dissolve outward into the hero. Total duration 4s, 60fps via rAF.
+ * Motion/timings unchanged from original dot version — ASCII is draw-only swap.
  */
 export default function Loader({ onComplete }: LoaderProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -45,12 +56,12 @@ export default function Loader({ onComplete }: LoaderProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) return;
 
     let w = 0;
     let h = 0;
-    const dpr = getHeroPerfConfig().dpr;
+    const dpr = 1;
 
     const resize = () => {
       w = window.innerWidth;
@@ -74,6 +85,7 @@ export default function Loader({ onComplete }: LoaderProps) {
       speed: 0.15 + Math.random() * 0.25,
       blue: Math.random() < 0.28,
       opacity: 0.3 + Math.random() * 0.7,
+      char: pickChar(),
     }));
 
     const scatter = dots.map(() => ({
@@ -81,11 +93,17 @@ export default function Loader({ onComplete }: LoaderProps) {
       y: Math.random() * h,
     }));
 
-    const DURATION = 4000;
+    const DURATION = 5000;
+    const HOLD_AFTER_MS = 400;
     const start = performance.now();
     let raf = 0;
+    let completed = false;
 
     const ease = (t: number) => t * t * (3 - 2 * t);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `500 11px ${MONO_FONT}`;
 
     const loop = (now: number) => {
       const elapsed = now - start;
@@ -103,25 +121,23 @@ export default function Loader({ onComplete }: LoaderProps) {
       const rot = elapsed * 0.0006;
 
       for (let i = 0; i < dots.length; i++) {
-        const d = dots[i];
+        const d = dots[i]!;
         d.angle += d.speed * 0.012;
 
         const r = d.baseRadius * (1 + dissolve * 6);
         const tx = cx + Math.cos(d.angle + rot) * r;
         const ty = cy + Math.sin(d.angle + rot) * r;
 
-        const sx = scatter[i].x;
-        const sy = scatter[i].y;
+        const sx = scatter[i]!.x;
+        const sy = scatter[i]!.y;
         const x = sx + (tx - sx) * forming;
         const y = sy + (ty - sy) * forming;
 
         const pulse = 0.5 + 0.5 * Math.sin(d.angle * 3 - elapsed * 0.004);
         const alpha = d.opacity * (1 - dissolve) * (0.5 + 0.5 * pulse);
 
-        ctx.beginPath();
-        ctx.arc(x, y, d.size, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${d.blue ? COLOR_BLUE : COLOR_WHITE}, ${alpha})`;
-        ctx.fill();
+        ctx.fillText(d.char, x, y);
       }
 
       if (labelRef.current) {
@@ -135,9 +151,12 @@ export default function Loader({ onComplete }: LoaderProps) {
 
       if (p < 1) {
         raf = requestAnimationFrame(loop);
-      } else {
-        document.body.style.overflow = "";
-        onComplete();
+      } else if (!completed) {
+        completed = true;
+        window.setTimeout(() => {
+          document.body.style.overflow = "";
+          onComplete();
+        }, HOLD_AFTER_MS);
       }
     };
 
@@ -151,16 +170,21 @@ export default function Loader({ onComplete }: LoaderProps) {
   }, [onComplete]);
 
   return (
-    <div ref={shellRef} className="fixed inset-0 z-50 bg-[#010101]">
+    <div ref={shellRef} className="loader-shell fixed inset-0 z-50 bg-[#010101]">
       <canvas ref={canvasRef} className="absolute inset-0" aria-hidden />
       <div
         ref={labelRef}
-        className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0"
+        className="loader-logo-wrap pointer-events-none absolute inset-0 flex items-center justify-center opacity-0"
         aria-hidden
       >
-        <span className="font-anton text-[clamp(1rem,2.8vw,1.55rem)] uppercase tracking-[0.38em] text-white sm:text-[clamp(1.2rem,3.5vw,2rem)]">
-          ALPHABLOCK <span className="text-[#0D2DCD]">AI</span>
-        </span>
+        <Image
+          src={assets.logoLight}
+          alt="AlphaBlock AI"
+          width={320}
+          height={96}
+          priority
+          className="loader-logo h-auto w-[clamp(160px,28vw,280px)] object-contain"
+        />
       </div>
     </div>
   );

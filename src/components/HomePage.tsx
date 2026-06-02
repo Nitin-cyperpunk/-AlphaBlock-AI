@@ -14,7 +14,7 @@ export default function HomePage() {
 
   const handlePreloaderComplete = useCallback(() => {
     window.scrollTo(0, 0);
-    setShowHero(true);
+    window.setTimeout(() => setShowHero(true), 400);
   }, []);
 
   const handleRevealStart = useCallback(() => {
