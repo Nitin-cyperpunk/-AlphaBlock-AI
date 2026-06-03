@@ -7,7 +7,7 @@ import { assets } from "@/lib/assets";
 const COLOR_WHITE = "255, 255, 255";
 const COLOR_BLUE = "13, 45, 205";
 
-const ASCII_POOL = ["@", "#", "$", "%", "&", "+", "=", "/", "\\", "X", "x", "0", "8", "S"] as const;
+const ASCII_POOL = ["0", "1", "#", "$", "%", "@", "+", "x", "/", "\\"] as const;
 
 const MONO_FONT =
   'var(--font-jetbrains), ui-monospace, "JetBrains Mono", monospace';
@@ -83,7 +83,7 @@ export default function Loader({ onComplete }: LoaderProps) {
       baseRadius: ringRadius + (Math.random() - 0.5) * 18,
       size: 0.6 + Math.random() * 2.6,
       speed: 0.15 + Math.random() * 0.25,
-      blue: Math.random() < 0.28,
+      blue: Math.random() < 0.18,
       opacity: 0.3 + Math.random() * 0.7,
       char: pickChar(),
     }));
@@ -94,7 +94,7 @@ export default function Loader({ onComplete }: LoaderProps) {
     }));
 
     const DURATION = 5000;
-    const HOLD_AFTER_MS = 400;
+    const HOLD_AFTER_MS = 200;
     const start = performance.now();
     let raf = 0;
     let completed = false;

@@ -115,7 +115,7 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
     let perf: HeroPerfConfig = getHeroPerfConfig();
     let w = 0;
     let h = 0;
-    let field: AsciiFieldState = { particles: [], nextTwinkleAt: 0 };
+    let field: AsciiFieldState = { particles: [] };
     let lastFrame = 0;
     let lastTime = performance.now();
     let frameIndex = 0;
@@ -225,7 +225,6 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
           mouse,
           interactiveRef.current && environmentReadyRef.current && perf.enablePointerHover,
           reduced,
-          perf.enableTwinkle,
         );
 
         sharpCtx.clearRect(0, 0, w, h);
@@ -243,7 +242,6 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
           h,
           {
             scrollProgress: scrollProgressRef.current,
-            layers: [0, 1, 2, 3],
             now,
           },
           drawBlur,
@@ -276,7 +274,7 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
 
       <div
         ref={blueWashRef}
-        className="absolute inset-0 z-[1] opacity-0"
+        className="absolute inset-0 z-[1]"
         style={{
           background:
             "radial-gradient(circle at 50% 46%, rgb(8 19 70 / 90%) 0%, rgb(4 8 28) 38%, rgb(1 1 1) 100%)",
@@ -287,20 +285,22 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
         ref={glowShellRef}
         className="hero-glow absolute left-1/2 top-[46%] z-[2] -translate-x-1/2 -translate-y-1/2"
       >
-        <div ref={glowStackRef} className="hero-glow-stack opacity-0">
+        <div ref={glowStackRef} className="hero-glow-stack">
           <div className="hero-glow-outer" aria-hidden />
           <div className="hero-glow-mid" aria-hidden />
           <div className="hero-glow-core" aria-hidden />
         </div>
       </div>
 
-      <div ref={fogRef} className="hero-fog absolute inset-0 z-[3] opacity-0" aria-hidden>
+      <div ref={vignetteRef} className="hero-vignette absolute inset-0 z-[3]" />
+
+      <div ref={fogRef} className="hero-fog absolute inset-0 z-[4]" aria-hidden>
         <div className="hero-fog-plate hero-fog-left" />
         <div className="hero-fog-plate hero-fog-right" />
         <div className="hero-fog-plate hero-fog-bottom" />
       </div>
 
-      <div className="hero-ascii-stack absolute inset-0 z-[4] opacity-0">
+      <div className="hero-ascii-stack absolute inset-0 z-[5]">
         <canvas
           ref={asciiBlurRef}
           className="hero-ascii-blur absolute inset-0 h-full w-full"
@@ -312,8 +312,6 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
           aria-hidden
         />
       </div>
-
-      <div ref={vignetteRef} className="hero-vignette absolute inset-0 z-[5] opacity-0" />
     </div>
   );
 }

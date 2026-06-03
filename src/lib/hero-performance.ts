@@ -13,8 +13,8 @@ export type HeroPerfConfig = {
   enableTwinkle: boolean;
 };
 
-const DESKTOP_PARTICLES = 580;
-const MOBILE_PARTICLES = 290;
+const DESKTOP_PARTICLES = 680;
+const MOBILE_PARTICLES = 340;
 
 const DESKTOP_CONFIG: Omit<HeroPerfConfig, "tier" | "dpr"> = {
   frameIntervalMs: 0,
@@ -77,7 +77,7 @@ export function getHeroPerfConfig(): HeroPerfConfig {
     tier: "desktop",
     dpr,
     ...DESKTOP_CONFIG,
-    particleCount: lowEnd ? 420 : DESKTOP_PARTICLES,
+    particleCount: lowEnd ? 520 : DESKTOP_PARTICLES,
     frameIntervalMs: lowEnd ? 16 : 0,
   };
 }
