@@ -8,11 +8,15 @@ type HeroGlassCTAProps = {
   href: string;
   children: ReactNode;
   variant?: "primary" | "secondary";
+  compact?: boolean;
   className?: string;
-};
+} & Omit<React.ComponentPropsWithoutRef<"a">, "href" | "children" | "className">;
 
 export const HeroGlassCTA = forwardRef<HTMLAnchorElement, HeroGlassCTAProps>(
-  function HeroGlassCTA({ href, children, variant = "primary", className = "" }, ref) {
+  function HeroGlassCTA(
+    { href, children, variant = "primary", compact = false, className = "", ...rest },
+    ref,
+  ) {
     const innerRef = useRef<HTMLAnchorElement>(null);
     const arrowRef = useRef<SVGSVGElement>(null);
     const spotX = useRef(50);
@@ -120,7 +124,8 @@ export const HeroGlassCTA = forwardRef<HTMLAnchorElement, HeroGlassCTAProps>(
       <a
         ref={setRef}
         href={href}
-        className={`hero-glass-cta hero-glass-cta--${variant} ${className}`.trim()}
+        className={`hero-glass-cta hero-glass-cta--${variant}${compact ? " hero-glass-cta--compact" : ""} ${className}`.trim()}
+        {...rest}
       >
         <span className="hero-glass-cta__highlight" aria-hidden />
         <span className="hero-glass-cta__spotlight" aria-hidden />

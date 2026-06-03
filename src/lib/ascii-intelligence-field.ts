@@ -18,6 +18,11 @@ export const ASCII_CHARS = [
   "0",
   "8",
   "S",
+  "*",
+  ".",
+  "|",
+  "1",
+  "2",
 ] as const;
 
 /** 0–2 = sharp canvas, 3 = blur canvas */
@@ -26,8 +31,9 @@ export type ParticleLayer = 0 | 1 | 2 | 3;
 export const CURSOR_RADIUS = 260;
 export const TWINKLE_MS = 2000;
 const LERP = 0.18;
-const SAFE_W = 0.6;
-const SAFE_H = 0.5;
+const SIZE_SCALE = 1.4;
+const SAFE_W = 0.7;
+const SAFE_H = 0.6;
 const LAYER_SCROLL: Record<ParticleLayer, number> = { 0: 5, 1: 15, 2: 25, 3: 40 };
 
 export type AsciiParticle = {
@@ -52,8 +58,7 @@ export type AsciiFieldState = {
   nextTwinkleAt: number;
 };
 
-const MONO_FONT =
-  'var(--font-jetbrains), ui-monospace, "JetBrains Mono", monospace';
+const MONO_FONT = 'var(--font-jetbrains), ui-monospace, "JetBrains Mono", monospace';
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min);
@@ -90,16 +95,22 @@ function pickLayer(): ParticleLayer {
 }
 
 function layerSize(layer: ParticleLayer): number {
+  let base: number;
   switch (layer) {
     case 0:
-      return rand(6, 10);
+      base = rand(6, 10);
+      break;
     case 1:
-      return rand(10, 14);
+      base = rand(10, 14);
+      break;
     case 2:
-      return rand(14, 20);
+      base = rand(14, 20);
+      break;
     case 3:
-      return rand(12, 20);
+      base = rand(12, 20);
+      break;
   }
+  return base * SIZE_SCALE;
 }
 
 function layerOpacityScale(layer: ParticleLayer): number {

@@ -34,6 +34,8 @@ export function HeroBackground({
   const vignetteRef = useRef<HTMLDivElement>(null);
 
   const interactiveRef = useRef(interactive);
+  const environmentReadyRef = useRef(false);
+  const revealThrottleUntilRef = useRef(0);
   const onReadyRef = useRef(onEnvironmentReady);
   const scrollProgressRef = useRef(0);
   const scrollSmoothRef = useRef({ progress: 0 });
@@ -50,7 +52,7 @@ export function HeroBackground({
   useEffect(() => {
     const smooth = scrollSmoothRef.current;
     const scrollTo = gsap.quickTo(smooth, "progress", {
-      duration: 0.9,
+      duration: 0.45,
       ease: "power2.out",
       onUpdate: () => {
         scrollProgressRef.current = smooth.progress;
@@ -103,6 +105,8 @@ export function HeroBackground({
     const finish = () => {
       if (finished) return;
       finished = true;
+      environmentReadyRef.current = true;
+      revealThrottleUntilRef.current = performance.now() + 1100;
       glowShell.classList.add("hero-glow--pulsing");
       onReadyRef.current?.();
     };
@@ -121,14 +125,14 @@ export function HeroBackground({
     gsap.set(asciiWrap, { opacity: 0 });
     gsap.set(vignette, { opacity: 0 });
 
-    const tl = gsap.timeline({ delay: 0.35 });
+    const tl = gsap.timeline({ delay: 0.12 });
 
-    tl.to(blueWash, { opacity: 1, duration: 0.65, ease: "power2.out" })
-      .to(glowStack, { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }, "-=0.22")
-      .to(asciiWrap, { opacity: 1, duration: 0.75, ease: "power2.out" }, "-=0.18")
-      .call(finish, undefined, "-=0.5")
-      .to(fog, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.4")
-      .to(vignette, { opacity: 1, duration: 0.55, ease: "power2.out" }, "-=0.1");
+    tl.to(blueWash, { opacity: 1, duration: 0.55, ease: "power2.out" })
+      .to(glowStack, { opacity: 1, scale: 1, duration: 0.65, ease: "power2.out" }, "-=0.35")
+      .to(asciiWrap, { opacity: 1, duration: 0.6, ease: "power2.out" }, "-=0.42")
+      .call(finish, undefined, "-=0.38")
+      .to(fog, { opacity: 1, duration: 0.5, ease: "power2.out" }, "-=0.35")
+      .to(vignette, { opacity: 1, duration: 0.45, ease: "power2.out" }, "-=0.3");
 
     return () => {
       tl.kill();
@@ -254,6 +258,8 @@ export function HeroBackground({
       frameIndex++;
 
       const reduced = perf.tier === "reduced";
+      const revealing = now < revealThrottleUntilRef.current;
+      if (revealing && frameIndex % 2 !== 0) return;
 
       if (!reduced && field.particles.length > 0) {
         stepAsciiField(
@@ -262,14 +268,14 @@ export function HeroBackground({
           h,
           dt,
           mouse,
-          interactiveRef.current && perf.enablePointerHover,
+          interactiveRef.current && environmentReadyRef.current && perf.enablePointerHover,
           reduced,
-          perf.enableTwinkle,
+          perf.enableTwinkle && !revealing,
         );
 
         sharpCtx.clearRect(0, 0, w, h);
 
-        const drawBlur = frameIndex % 2 === 0;
+        const drawBlur = revealing ? frameIndex % 3 === 0 : frameIndex % 2 === 0;
         if (drawBlur) {
           blurCtx.clearRect(0, 0, w, h);
         }

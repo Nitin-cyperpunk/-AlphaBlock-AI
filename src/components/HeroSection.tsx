@@ -1,20 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
 import { HeroBackground } from "@/components/HeroBackground";
 import { HeroGlassCTA } from "@/components/HeroGlassCTA";
 import HeroCursor from "./HeroCursor";
 
+gsap.registerPlugin(useGSAP);
+
 type HeroSectionProps = {
   interactive?: boolean;
-  onRevealStart?: () => void;
+  onBackgroundReady?: () => void;
   onTransitionComplete?: () => void;
 };
 
 export default function HeroSection({
   interactive = false,
-  onRevealStart,
+  onBackgroundReady,
   onTransitionComplete,
 }: HeroSectionProps) {
   const contentColumnRef = useRef<HTMLDivElement>(null);
@@ -28,102 +31,114 @@ export default function HeroSection({
   const scrollHintRef = useRef<HTMLDivElement>(null);
   const contentLayerRef = useRef<HTMLDivElement>(null);
   const contentRevealedRef = useRef(false);
+  const revealContentRef = useRef<() => void>(() => {});
 
   const headlineLines = () =>
     [line1Ref.current, line2Ref.current, line3Ref.current].filter(Boolean) as HTMLSpanElement[];
 
-  useLayoutEffect(() => {
-    const column = contentColumnRef.current;
-    const eyebrow = eyebrowRef.current;
-    const lines = headlineLines();
-    const sub = subRef.current;
-    const ctaPrimary = ctaPrimaryRef.current;
-    const ctaSecondary = ctaSecondaryRef.current;
-    const scrollHint = scrollHintRef.current;
+  useGSAP(
+    (_, contextSafe) => {
+      const column = contentColumnRef.current;
+      const eyebrow = eyebrowRef.current;
+      const lines = headlineLines();
+      const sub = subRef.current;
+      const ctaPrimary = ctaPrimaryRef.current;
+      const ctaSecondary = ctaSecondaryRef.current;
+      const scrollHint = scrollHintRef.current;
 
-    if (!column || !eyebrow || lines.length !== 3 || !sub || !ctaPrimary || !ctaSecondary) {
-      return;
-    }
+      if (!column || !eyebrow || lines.length !== 3 || !sub || !ctaPrimary || !ctaSecondary) {
+        return;
+      }
 
-    gsap.set(column, { opacity: 0 });
-    gsap.set(eyebrow, { opacity: 0, y: 10 });
-    gsap.set(lines, { yPercent: 108, opacity: 1 });
-    gsap.set(sub, { opacity: 0, y: 10 });
-    gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, y: 20 });
-    if (scrollHint) gsap.set(scrollHint, { opacity: 0, y: 6 });
-  }, []);
+      gsap.set(column, { opacity: 0 });
+      gsap.set(eyebrow, { opacity: 0, y: 10 });
+      gsap.set(lines, { yPercent: 108, opacity: 1 });
+      gsap.set(sub, { opacity: 0, y: 10 });
+      gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, y: 20 });
+      if (scrollHint) gsap.set(scrollHint, { opacity: 0, y: 6 });
 
-  const revealContent = useCallback(() => {
-    if (contentRevealedRef.current) return;
-    contentRevealedRef.current = true;
+      if (!contextSafe) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const column = contentColumnRef.current;
-    const eyebrow = eyebrowRef.current;
-    const [line1, line2, line3] = [
-      line1Ref.current,
-      line2Ref.current,
-      line3Ref.current,
-    ];
-    const sub = subRef.current;
-    const ctaPrimary = ctaPrimaryRef.current;
-    const ctaSecondary = ctaSecondaryRef.current;
-    const scrollHint = scrollHintRef.current;
+      revealContentRef.current = contextSafe(() => {
+        if (contentRevealedRef.current) return;
+        contentRevealedRef.current = true;
 
-    if (!column || !eyebrow || !line1 || !line2 || !line3 || !sub || !ctaPrimary || !ctaSecondary) {
-      onRevealStart?.();
-      onTransitionComplete?.();
-      return;
-    }
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const [line1, line2, line3] = [line1Ref.current, line2Ref.current, line3Ref.current];
 
-    contentLayerRef.current?.classList.add("hero-content-layer--visible");
+        if (
+          !column ||
+          !eyebrow ||
+          !line1 ||
+          !line2 ||
+          !line3 ||
+          !sub ||
+          !ctaPrimary ||
+          !ctaSecondary
+        ) {
+          onTransitionComplete?.();
+          return;
+        }
 
-    if (reduce) {
-      onRevealStart?.();
-      gsap.set([column, eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint], {
-        opacity: 1,
-        y: 0,
-        yPercent: 0,
-        scale: 1,
-        clearProps: "transform",
+        contentLayerRef.current?.classList.add("hero-content-layer--visible");
+        lines.forEach((line) => line.classList.add("hero-headline-inner--animating"));
+
+        if (reduce) {
+          gsap.set(
+            [column, eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint],
+            {
+              opacity: 1,
+              y: 0,
+              yPercent: 0,
+              scale: 1,
+              clearProps: "transform",
+            },
+          );
+          gsap.set(eyebrow, { opacity: 0.7 });
+          gsap.set(sub, { opacity: 0.75 });
+          lines.forEach((line) => line.classList.remove("hero-headline-inner--animating"));
+          onTransitionComplete?.();
+          return;
+        }
+
+        gsap.set(column, { opacity: 1 });
+
+        const tl = gsap.timeline({
+          onComplete: () => {
+            gsap.set([eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint], {
+              clearProps: "transform",
+            });
+            lines.forEach((line) => line.classList.remove("hero-headline-inner--animating"));
+            onTransitionComplete?.();
+          },
+          defaults: { ease: "power2.out", force3D: true },
+        });
+
+        tl.fromTo(eyebrow, { opacity: 0, y: 14 }, { opacity: 0.7, y: 0, duration: 0.44 })
+          .fromTo(
+            lines,
+            { yPercent: 105 },
+            { yPercent: 0, duration: 0.52, stagger: 0.075, ease: "power2.out" },
+            "-=0.24",
+          )
+          .fromTo(sub, { opacity: 0, y: 12 }, { opacity: 0.75, y: 0, duration: 0.36 }, "-=0.28")
+          .fromTo(
+            [ctaPrimary, ctaSecondary],
+            { opacity: 0, y: 14 },
+            { opacity: 1, y: 0, duration: 0.36, stagger: 0.06 },
+            "-=0.2",
+          );
+
+        if (scrollHint) {
+          tl.fromTo(scrollHint, { opacity: 0, y: 8 }, { opacity: 0.5, y: 0, duration: 0.3 }, "-=0.16");
+        }
       });
-      gsap.set(eyebrow, { opacity: 0.7 });
-      gsap.set(sub, { opacity: 0.75 });
-      onTransitionComplete?.();
-      return;
-    }
-
-    gsap.set(column, { opacity: 0 });
-    gsap.set(eyebrow, { opacity: 0, y: 10 });
-    gsap.set([line1, line2, line3], { yPercent: 108, opacity: 1 });
-    gsap.set(sub, { opacity: 0, y: 10 });
-    gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, y: 20 });
-    if (scrollHint) gsap.set(scrollHint, { opacity: 0, y: 6 });
-
-    const BEAT = 0.4;
-
-    const tl = gsap.timeline({
-      onComplete: () => onTransitionComplete?.(),
-      defaults: { ease: "power3.out", force3D: true },
-    });
-
-    tl.to(column, { opacity: 1, duration: 0.5, ease: "power2.out" })
-      .call(() => onRevealStart?.(), undefined, 0)
-      .to(eyebrow, { opacity: 0.7, y: 0, duration: 0.75 }, "-=0.15")
-      .to(line1, { yPercent: 0, duration: 0.8 }, `+=${BEAT}`)
-      .to(line2, { yPercent: 0, duration: 0.8 }, `+=${BEAT}`)
-      .to(line3, { yPercent: 0, duration: 0.8 }, `+=${BEAT}`)
-      .to(sub, { opacity: 0.75, y: 0, duration: 0.75 }, `+=${BEAT}`)
-      .to(
-        [ctaPrimary, ctaSecondary],
-        { opacity: 1, y: 0, duration: 0.8, stagger: 0.12, ease: "power4.out" },
-        `+=${BEAT}`,
-      );
-
-    if (scrollHint) {
-      tl.to(scrollHint, { opacity: 0.5, y: 0, duration: 0.6, ease: "power3.out" }, `+=${BEAT}`);
-    }
-  }, [onRevealStart, onTransitionComplete]);
+    },
+    {
+      scope: contentLayerRef,
+      dependencies: [onTransitionComplete],
+    },
+  );
 
   useEffect(() => {
     contentRevealedRef.current = false;
@@ -138,7 +153,13 @@ export default function HeroSection({
     >
       <div id="hero" className="pointer-events-none absolute top-0 h-0 w-0" aria-hidden />
 
-      <HeroBackground interactive={interactive} onEnvironmentReady={revealContent} />
+      <HeroBackground
+        interactive={interactive}
+        onEnvironmentReady={() => {
+          revealContentRef.current();
+          requestAnimationFrame(() => onBackgroundReady?.());
+        }}
+      />
       <HeroCursor active={interactive} />
 
       <div ref={contentLayerRef} className="hero-content-layer relative z-10 h-full">
@@ -148,24 +169,24 @@ export default function HeroSection({
         >
           <p
             ref={eyebrowRef}
-            className="font-mono text-[0.7rem] uppercase tracking-[0.45em] text-white sm:text-xs"
+            className="font-mono text-[1.1rem] uppercase tracking-[0.45em] text-white sm:text-xs"
           >
             BUILT FOR THE NEXT GENERATION OF TRADERS
           </p>
 
-          <h1 className="mt-8 text-[clamp(2rem,5.2vw,3.75rem)] font-normal leading-[1.08] tracking-[-0.02em] text-white">
+          <h1 className="mt-4 text-[clamp(2rem,5.2vw,3.75rem)] font-normal leading-[1.08] tracking-[-0.02em] text-white">
             <span className="hero-headline-line block overflow-hidden">
-              <span ref={line1Ref} className="hero-headline-inner block will-change-transform">
+              <span ref={line1Ref} className="hero-headline-inner block">
                 The <span className="font-display italic">personalised</span> intelligence
               </span>
             </span>
             <span className="hero-headline-line block overflow-hidden">
-              <span ref={line2Ref} className="hero-headline-inner block will-change-transform">
+              <span ref={line2Ref} className="hero-headline-inner block">
                 layer for
               </span>
             </span>
             <span className="hero-headline-line block overflow-hidden">
-              <span ref={line3Ref} className="hero-headline-inner block will-change-transform">
+              <span ref={line3Ref} className="hero-headline-inner block">
                 <span className="font-display italic">onchain</span> trading.
               </span>
             </span>

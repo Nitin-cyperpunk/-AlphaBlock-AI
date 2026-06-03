@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowUpRight, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
+import { HeroGlassCTA } from "@/components/HeroGlassCTA";
 import { assets } from "@/lib/assets";
 import { useLenis } from "@/context/LenisContext";
 
@@ -84,8 +85,6 @@ export default function Navbar({ visible = false }: NavbarProps) {
   const shellRef = useRef<HTMLElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLAnchorElement>(null);
-  const ctaRef = useRef<HTMLAnchorElement>(null);
-  const arrowRef = useRef<SVGSVGElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const mobileLinksRef = useRef<HTMLDivElement>(null);
   const menuTweenRef = useRef<gsap.core.Timeline | null>(null);
@@ -187,15 +186,15 @@ export default function Navbar({ visible = false }: NavbarProps) {
       return;
     }
 
-    if (logo) gsap.set(logo, { opacity: 0, y: -10 });
+    if (logo) gsap.set(logo, { opacity: 0, y: -8 });
     gsap
-      .timeline()
+      .timeline({ defaults: { ease: "power3.out" } })
       .fromTo(
         shell,
-        { opacity: 0, y: -30 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "power4.out" },
+        { opacity: 0, y: -22 },
+        { opacity: 1, y: 0, duration: 0.55 },
       )
-      .to(logo, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, "-=0.55");
+      .to(logo, { opacity: 1, y: 0, duration: 0.5 }, "-=0.42");
   }, [visible, reducedMotion]);
 
   useEffect(() => {
@@ -204,23 +203,26 @@ export default function Navbar({ visible = false }: NavbarProps) {
 
     if (reducedMotion) return;
 
-    let raf = 0;
+    const progress = { t: 0 };
+
+    const applyPanel = () => {
+      const t = progress.t;
+      gsap.set(panel, {
+        height: 64 - t * 8,
+        backgroundColor: `rgba(255, 255, 255, ${0.05 + t * 0.04})`,
+        borderColor: `rgba(255, 255, 255, ${0.14 + t * 0.06})`,
+      });
+    };
+
+    const quickCompact = gsap.quickTo(progress, "t", {
+      duration: 0.3,
+      ease: "power3.out",
+      onUpdate: applyPanel,
+    });
 
     const update = (scrollY: number) => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const t = Math.min(Math.max((scrollY - SCROLL_COMPACT_AT) / 48, 0), 1);
-        gsap.to(panel, {
-          height: 64 - t * 8,
-          backgroundColor: `rgba(20, 20, 20, ${0.35 + t * 0.25})`,
-          borderColor: `rgba(255, 255, 255, ${0.08 + t * 0.04})`,
-          backdropFilter: `blur(${24 + t * 6}px)`,
-          WebkitBackdropFilter: `blur(${24 + t * 6}px)`,
-          duration: 0.4,
-          ease: "power2.out",
-          overwrite: "auto",
-        });
-      });
+      const t = Math.min(Math.max((scrollY - SCROLL_COMPACT_AT) / 48, 0), 1);
+      quickCompact(t);
     };
 
     if (lenis) {
@@ -229,7 +231,7 @@ export default function Navbar({ visible = false }: NavbarProps) {
       update(lenis.scroll);
       return () => {
         lenis.off("scroll", onScroll);
-        cancelAnimationFrame(raf);
+        quickCompact.tween?.kill();
       };
     }
 
@@ -238,46 +240,9 @@ export default function Navbar({ visible = false }: NavbarProps) {
     update(window.scrollY);
     return () => {
       window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
+      quickCompact.tween?.kill();
     };
   }, [lenis, visible, reducedMotion]);
-
-  useEffect(() => {
-    const cta = ctaRef.current;
-    const arrow = arrowRef.current;
-    if (!cta || reducedMotion) return;
-
-    const onEnter = () => {
-      gsap.to(cta, {
-        scale: 1.03,
-        backgroundColor: "rgba(255, 255, 255, 0.08)",
-        borderColor: "rgba(255, 255, 255, 0.25)",
-        boxShadow: "0 0 24px rgba(13, 45, 205, 0.15)",
-        duration: 0.3,
-        ease: "power2.out",
-      });
-      if (arrow) gsap.to(arrow, { x: 4, duration: 0.3, ease: "power2.out" });
-    };
-
-    const onLeave = () => {
-      gsap.to(cta, {
-        scale: 1,
-        backgroundColor: "rgba(255, 255, 255, 0.04)",
-        borderColor: "rgba(255, 255, 255, 0.12)",
-        boxShadow: "0 0 0 rgba(13, 45, 205, 0)",
-        duration: 0.3,
-        ease: "power2.out",
-      });
-      if (arrow) gsap.to(arrow, { x: 0, duration: 0.3, ease: "power2.out" });
-    };
-
-    cta.addEventListener("mouseenter", onEnter);
-    cta.addEventListener("mouseleave", onLeave);
-    return () => {
-      cta.removeEventListener("mouseenter", onEnter);
-      cta.removeEventListener("mouseleave", onLeave);
-    };
-  }, [reducedMotion]);
 
   if (!visible) return null;
 
@@ -290,7 +255,7 @@ export default function Navbar({ visible = false }: NavbarProps) {
       >
         <div
           ref={panelRef}
-          className="nav-panel pointer-events-auto grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-4 rounded-[999px] border border-white/[0.08] bg-[rgba(20,20,20,0.35)] px-5 shadow-[0_8px_40px_rgba(0,0,0,0.25)] backdrop-blur-[24px] [-webkit-backdrop-filter:blur(24px)]"
+          className="nav-panel pointer-events-auto grid h-16 grid-cols-[1fr_auto] items-center gap-4 rounded-[999px] border px-5 lg:grid-cols-[1fr_auto_1fr]"
         >
           <a
             ref={logoRef}
@@ -299,17 +264,21 @@ export default function Navbar({ visible = false }: NavbarProps) {
               e.preventDefault();
               scrollToAnchor("#hero");
             }}
-            className="flex items-center opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+            className="nav-brand flex min-w-0 items-center gap-2.5 opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent sm:gap-3"
             aria-label="AlphaBlock AI home"
           >
             <Image
-              src={assets.logoLight}
-              alt="AlphaBlock AI"
-              width={140}
-              height={32}
-              className="h-7 w-auto"
+              src={assets.icon}
+              alt=""
+              width={40}
+              height={40}
+              className="nav-brand__mark h-9 w-9 shrink-0 rounded-[10px] object-contain sm:h-10 sm:w-10"
               priority
             />
+            <span className="nav-brand__name truncate leading-none">
+              <span className="font-semibold tracking-[-0.02em] text-white">AlphaBlock</span>
+              <span className="font-display italic text-white/85"> AI</span>
+            </span>
           </a>
 
           <nav
@@ -331,19 +300,19 @@ export default function Navbar({ visible = false }: NavbarProps) {
           </nav>
 
           <div className="flex items-center justify-end gap-3">
-            <a
-              ref={ctaRef}
+            <HeroGlassCTA
               href="#launch"
+              variant="primary"
+              compact
+              className="hidden lg:inline-flex"
               onClick={(e) => {
                 e.preventDefault();
                 closeMenu();
                 scrollToAnchor("#launch");
               }}
-              className="nav-cta hidden h-11 items-center gap-2 rounded-[999px] border border-white/[0.12] bg-white/[0.04] px-5 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 lg:inline-flex"
             >
               Launch App
-              <ArrowUpRight ref={arrowRef} className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </a>
+            </HeroGlassCTA>
 
             <button
               type="button"
@@ -392,19 +361,20 @@ export default function Navbar({ visible = false }: NavbarProps) {
                   {link.label}
                 </a>
               ))}
-              <a
-                data-mobile-link
+              <HeroGlassCTA
                 href="#launch"
+                variant="primary"
+                compact
+                className="mt-4"
+                data-mobile-link
                 onClick={(e) => {
                   e.preventDefault();
                   closeMenu();
                   scrollToAnchor("#launch");
                 }}
-                className="nav-cta mt-4 inline-flex h-11 items-center gap-2 rounded-[999px] border border-white/[0.12] bg-white/[0.04] px-5 text-sm font-medium text-white"
               >
                 Launch App
-                <ArrowUpRight className="h-4 w-4" strokeWidth={2} aria-hidden />
-              </a>
+              </HeroGlassCTA>
             </div>
           </div>
         </div>

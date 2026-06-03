@@ -13,8 +13,8 @@ export type HeroPerfConfig = {
   enableTwinkle: boolean;
 };
 
-const DESKTOP_PARTICLES = 520;
-const MOBILE_PARTICLES = 280;
+const DESKTOP_PARTICLES = 580;
+const MOBILE_PARTICLES = 290;
 
 const DESKTOP_CONFIG: Omit<HeroPerfConfig, "tier" | "dpr"> = {
   frameIntervalMs: 0,
@@ -39,18 +39,14 @@ function isMobileViewport(): boolean {
 }
 
 function isTabletViewport(): boolean {
-  return (
-    window.innerWidth < 1024 &&
-    window.matchMedia("(pointer: coarse)").matches
-  );
+  return window.innerWidth < 1024 && window.matchMedia("(pointer: coarse)").matches;
 }
 
 function isLowEndDevice(): boolean {
   const nav = navigator as Navigator & { deviceMemory?: number };
   const lowRam = typeof nav.deviceMemory === "number" && nav.deviceMemory < 4;
   const lowCpu =
-    typeof navigator.hardwareConcurrency === "number" &&
-    navigator.hardwareConcurrency <= 2;
+    typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 2;
   return lowRam || lowCpu;
 }
 
@@ -81,7 +77,7 @@ export function getHeroPerfConfig(): HeroPerfConfig {
     tier: "desktop",
     dpr,
     ...DESKTOP_CONFIG,
-    particleCount: lowEnd ? 400 : DESKTOP_PARTICLES,
+    particleCount: lowEnd ? 420 : DESKTOP_PARTICLES,
     frameIntervalMs: lowEnd ? 16 : 0,
   };
 }

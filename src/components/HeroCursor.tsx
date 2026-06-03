@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { gsap } from "gsap";
 
 type HeroCursorProps = {
   active?: boolean;
@@ -22,11 +23,19 @@ function HeroCursor({ active = false }: HeroCursorProps) {
     const ring = ringRef.current;
     if (!root || !dot || !ring) return;
 
-    const pos = { x: -100, y: -100 };
     const smooth = { x: -100, y: -100 };
     const ringSmooth = { x: -100, y: -100 };
     let visible = false;
-    let raf = 0;
+
+    const applyTransforms = () => {
+      dot.style.transform = `translate3d(${smooth.x}px, ${smooth.y}px, 0) translate(-50%, -50%)`;
+      ring.style.transform = `translate3d(${ringSmooth.x}px, ${ringSmooth.y}px, 0) translate(-50%, -50%)`;
+    };
+
+    const dotX = gsap.quickTo(smooth, "x", { duration: 0.32, ease: "power3.out", onUpdate: applyTransforms });
+    const dotY = gsap.quickTo(smooth, "y", { duration: 0.32, ease: "power3.out", onUpdate: applyTransforms });
+    const ringX = gsap.quickTo(ringSmooth, "x", { duration: 0.55, ease: "power3.out", onUpdate: applyTransforms });
+    const ringY = gsap.quickTo(ringSmooth, "y", { duration: 0.55, ease: "power3.out", onUpdate: applyTransforms });
 
     const show = () => {
       if (visible) return;
@@ -53,27 +62,20 @@ function HeroCursor({ active = false }: HeroCursorProps) {
         return;
       }
       show();
-      pos.x = e.clientX;
-      pos.y = e.clientY;
+      dotX(e.clientX);
+      dotY(e.clientY);
+      ringX(e.clientX);
+      ringY(e.clientY);
     };
 
-    const loop = () => {
-      raf = requestAnimationFrame(loop);
-      smooth.x += (pos.x - smooth.x) * 0.28;
-      smooth.y += (pos.y - smooth.y) * 0.28;
-      ringSmooth.x += (pos.x - ringSmooth.x) * 0.12;
-      ringSmooth.y += (pos.y - ringSmooth.y) * 0.12;
-
-      dot.style.transform = `translate(${smooth.x}px, ${smooth.y}px) translate(-50%, -50%)`;
-      ring.style.transform = `translate(${ringSmooth.x}px, ${ringSmooth.y}px) translate(-50%, -50%)`;
-    };
-
-    window.addEventListener("mousemove", onMove);
-    raf = requestAnimationFrame(loop);
+    window.addEventListener("mousemove", onMove, { passive: true });
 
     return () => {
-      cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
+      dotX.tween?.kill();
+      dotY.tween?.kill();
+      ringX.tween?.kill();
+      ringY.tween?.kill();
     };
   }, [active]);
 
