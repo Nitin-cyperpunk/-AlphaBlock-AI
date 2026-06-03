@@ -14,10 +14,10 @@ export default function HomePage() {
 
   const handlePreloaderComplete = useCallback(() => {
     window.scrollTo(0, 0);
-    setShowHero(true);
+    requestAnimationFrame(() => setShowHero(true));
   }, []);
 
-  const handleRevealStart = useCallback(() => {
+  const handleBackgroundReady = useCallback(() => {
     setNavVisible(true);
   }, []);
 
@@ -36,7 +36,7 @@ export default function HomePage() {
           <main className="relative bg-[#010101]">
             <HeroSection
               interactive={interactive}
-              onRevealStart={handleRevealStart}
+              onBackgroundReady={handleBackgroundReady}
               onTransitionComplete={handleTransitionComplete}
             />
             <SetupSection />

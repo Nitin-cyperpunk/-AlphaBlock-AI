@@ -26,12 +26,12 @@ export default function SmoothScrollProvider({
     }
 
     const instance = new Lenis({
-      duration: 1.15,
+      duration: 1,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: "vertical",
       smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 1.8,
+      wheelMultiplier: 0.9,
+      touchMultiplier: 1.5,
       infinite: false,
     });
 
@@ -44,7 +44,7 @@ export default function SmoothScrollProvider({
     };
 
     gsap.ticker.add(tickerCallback);
-    gsap.ticker.lagSmoothing(0);
+    gsap.ticker.lagSmoothing(500, 16);
 
     const onRefresh = () => instance.resize();
     ScrollTrigger.addEventListener("refresh", onRefresh);

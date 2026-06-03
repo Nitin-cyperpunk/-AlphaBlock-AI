@@ -295,7 +295,7 @@ export default function SetupSection() {
               end: "+=250%",
               pin: true,
               pinSpacing: true,
-              scrub: 0.9,
+              scrub: 0.55,
               anticipatePin: 1,
               invalidateOnRefresh: true,
               onUpdate: (self) => {

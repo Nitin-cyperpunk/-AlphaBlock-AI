@@ -1,21 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
 import { HeroBackground } from "@/components/HeroBackground";
+import { HeroGlassCTA } from "@/components/HeroGlassCTA";
+import HeroCursor from "./HeroCursor";
+
+gsap.registerPlugin(useGSAP);
 
 type HeroSectionProps = {
   interactive?: boolean;
-  onRevealStart?: () => void;
+  onBackgroundReady?: () => void;
   onTransitionComplete?: () => void;
 };
 
 export default function HeroSection({
   interactive = false,
-  onRevealStart,
+  onBackgroundReady,
   onTransitionComplete,
 }: HeroSectionProps) {
-  const sectionRef = useRef<HTMLElement>(null);
+  const contentColumnRef = useRef<HTMLDivElement>(null);
   const eyebrowRef = useRef<HTMLParagraphElement>(null);
   const line1Ref = useRef<HTMLSpanElement>(null);
   const line2Ref = useRef<HTMLSpanElement>(null);
@@ -23,78 +28,117 @@ export default function HeroSection({
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaPrimaryRef = useRef<HTMLAnchorElement>(null);
   const ctaSecondaryRef = useRef<HTMLAnchorElement>(null);
+  const scrollHintRef = useRef<HTMLDivElement>(null);
   const contentLayerRef = useRef<HTMLDivElement>(null);
   const contentRevealedRef = useRef(false);
+  const revealContentRef = useRef<() => void>(() => {});
 
-  useLayoutEffect(() => {
-    const eyebrow = eyebrowRef.current;
-    const line1 = line1Ref.current;
-    const line2 = line2Ref.current;
-    const line3 = line3Ref.current;
-    const sub = subRef.current;
-    const ctaPrimary = ctaPrimaryRef.current;
-    const ctaSecondary = ctaSecondaryRef.current;
-    if (!eyebrow || !line1 || !line2 || !line3 || !sub || !ctaPrimary || !ctaSecondary) {
-      return;
-    }
+  const headlineLines = () =>
+    [line1Ref.current, line2Ref.current, line3Ref.current].filter(Boolean) as HTMLSpanElement[];
 
-    gsap.set(eyebrow, { opacity: 0, y: 18 });
-    gsap.set([line1, line2, line3], { y: "110%", opacity: 0 });
-    gsap.set(sub, { opacity: 0, y: 16 });
-    gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, scale: 0.94 });
-  }, []);
+  useGSAP(
+    (_, contextSafe) => {
+      const column = contentColumnRef.current;
+      const eyebrow = eyebrowRef.current;
+      const lines = headlineLines();
+      const sub = subRef.current;
+      const ctaPrimary = ctaPrimaryRef.current;
+      const ctaSecondary = ctaSecondaryRef.current;
+      const scrollHint = scrollHintRef.current;
 
-  const revealContent = useCallback(() => {
-    if (contentRevealedRef.current) return;
-    contentRevealedRef.current = true;
-    onRevealStart?.();
+      if (!column || !eyebrow || lines.length !== 3 || !sub || !ctaPrimary || !ctaSecondary) {
+        return;
+      }
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const eyebrow = eyebrowRef.current;
-    const line1 = line1Ref.current;
-    const line2 = line2Ref.current;
-    const line3 = line3Ref.current;
-    const sub = subRef.current;
-    const ctaPrimary = ctaPrimaryRef.current;
-    const ctaSecondary = ctaSecondaryRef.current;
+      gsap.set(column, { opacity: 0 });
+      gsap.set(eyebrow, { opacity: 0, y: 10 });
+      gsap.set(lines, { yPercent: 108, opacity: 1 });
+      gsap.set(sub, { opacity: 0, y: 10 });
+      gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, y: 20 });
+      if (scrollHint) gsap.set(scrollHint, { opacity: 0, y: 6 });
 
-    if (!eyebrow || !line1 || !line2 || !line3 || !sub || !ctaPrimary || !ctaSecondary) {
-      onTransitionComplete?.();
-      return;
-    }
+      if (!contextSafe) return;
 
-    if (reduce) {
-      contentLayerRef.current?.classList.add("hero-content-layer--visible");
-      gsap.set([eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary], {
-        opacity: 1,
-        y: 0,
-        scale: 1,
+      revealContentRef.current = contextSafe(() => {
+        if (contentRevealedRef.current) return;
+        contentRevealedRef.current = true;
+
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const [line1, line2, line3] = [line1Ref.current, line2Ref.current, line3Ref.current];
+
+        if (
+          !column ||
+          !eyebrow ||
+          !line1 ||
+          !line2 ||
+          !line3 ||
+          !sub ||
+          !ctaPrimary ||
+          !ctaSecondary
+        ) {
+          onTransitionComplete?.();
+          return;
+        }
+
+        contentLayerRef.current?.classList.add("hero-content-layer--visible");
+        lines.forEach((line) => line.classList.add("hero-headline-inner--animating"));
+
+        if (reduce) {
+          gsap.set(
+            [column, eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint],
+            {
+              opacity: 1,
+              y: 0,
+              yPercent: 0,
+              scale: 1,
+              clearProps: "transform",
+            },
+          );
+          gsap.set(eyebrow, { opacity: 0.7 });
+          gsap.set(sub, { opacity: 0.75 });
+          lines.forEach((line) => line.classList.remove("hero-headline-inner--animating"));
+          onTransitionComplete?.();
+          return;
+        }
+
+        gsap.set(column, { opacity: 1 });
+
+        const tl = gsap.timeline({
+          onComplete: () => {
+            gsap.set([eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint], {
+              clearProps: "transform",
+            });
+            lines.forEach((line) => line.classList.remove("hero-headline-inner--animating"));
+            onTransitionComplete?.();
+          },
+          defaults: { ease: "power2.out", force3D: true },
+        });
+
+        tl.fromTo(eyebrow, { opacity: 0, y: 14 }, { opacity: 0.7, y: 0, duration: 0.44 })
+          .fromTo(
+            lines,
+            { yPercent: 105 },
+            { yPercent: 0, duration: 0.52, stagger: 0.075, ease: "power2.out" },
+            "-=0.24",
+          )
+          .fromTo(sub, { opacity: 0, y: 12 }, { opacity: 0.75, y: 0, duration: 0.36 }, "-=0.28")
+          .fromTo(
+            [ctaPrimary, ctaSecondary],
+            { opacity: 0, y: 14 },
+            { opacity: 1, y: 0, duration: 0.36, stagger: 0.06 },
+            "-=0.2",
+          );
+
+        if (scrollHint) {
+          tl.fromTo(scrollHint, { opacity: 0, y: 8 }, { opacity: 0.5, y: 0, duration: 0.3 }, "-=0.16");
+        }
       });
-      onTransitionComplete?.();
-      return;
-    }
-
-    contentLayerRef.current?.classList.add("hero-content-layer--visible");
-
-    gsap.set(eyebrow, { opacity: 0, y: 18 });
-    gsap.set([line1, line2, line3], { y: "110%", opacity: 0 });
-    gsap.set(sub, { opacity: 0, y: 16 });
-    gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, scale: 0.94 });
-
-    const tl = gsap.timeline({
-      delay: 0.15,
-      onComplete: () => onTransitionComplete?.(),
-    });
-
-    // Sequential cinematic reveal — one element after another
-    tl.to(eyebrow, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" })
-      .to(line1, { y: "0%", opacity: 1, duration: 0.85, ease: "expo.out" }, ">")
-      .to(line2, { y: "0%", opacity: 1, duration: 0.85, ease: "expo.out" }, ">")
-      .to(line3, { y: "0%", opacity: 1, duration: 0.85, ease: "expo.out" }, ">")
-      .to(sub, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, ">")
-      .to(ctaPrimary, { opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" }, ">")
-      .to(ctaSecondary, { opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" }, ">-0.12");
-  }, [onRevealStart, onTransitionComplete]);
+    },
+    {
+      scope: contentLayerRef,
+      dependencies: [onTransitionComplete],
+    },
+  );
 
   useEffect(() => {
     contentRevealedRef.current = false;
@@ -102,74 +146,66 @@ export default function HeroSection({
 
   return (
     <section
-      ref={sectionRef}
       id="how-it-works"
-      className="relative min-h-screen scroll-mt-28 overflow-hidden bg-background border-b border-border"
+      className={`hero-section relative h-screen scroll-mt-28 overflow-hidden border-b border-[#141414] bg-[#010101]${
+        interactive ? " hero-section--interactive" : ""
+      }`}
     >
       <div id="hero" className="pointer-events-none absolute top-0 h-0 w-0" aria-hidden />
+
       <HeroBackground
         interactive={interactive}
-        onEnvironmentReady={revealContent}
+        onEnvironmentReady={() => {
+          revealContentRef.current();
+          requestAnimationFrame(() => onBackgroundReady?.());
+        }}
       />
+      <HeroCursor active={interactive} />
 
-      <div ref={contentLayerRef} className="hero-content-layer relative z-10">
-        <div className="relative mx-auto flex min-h-screen max-w-4xl flex-col items-center justify-center px-6 pt-24 text-center sm:pt-28">
+      <div ref={contentLayerRef} className="hero-content-layer relative z-10 h-full">
+        <div
+          ref={contentColumnRef}
+          className="relative mx-auto flex h-full max-w-[1100px] flex-col items-center justify-center px-6 pt-20 pb-24 text-center"
+        >
           <p
             ref={eyebrowRef}
-            className="font-mono text-[0.9rem] uppercase tracking-[0.35em] text-muted-foreground"
+            className="font-mono text-[1.1rem] uppercase tracking-[0.45em] text-white sm:text-xs"
           >
-            Built for the next generation of traders
+            BUILT FOR THE NEXT GENERATION OF TRADERS
           </p>
 
-          <h1 className="mt-7 text-4xl font-medium leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl">
+          <h1 className="mt-4 text-[clamp(2rem,5.2vw,3.75rem)] font-normal leading-[1.08] tracking-[-0.02em] text-white">
             <span className="hero-headline-line block overflow-hidden">
               <span ref={line1Ref} className="hero-headline-inner block">
-                The{" "}
-                <span className="font-serif italic font-normal">personalised</span>{" "}
-                intelligence and
+                The <span className="font-display italic">personalised</span> intelligence
               </span>
             </span>
             <span className="hero-headline-line block overflow-hidden">
               <span ref={line2Ref} className="hero-headline-inner block">
-                <span className="font-serif italic font-normal">execution</span> layer
-                for
+                layer for
               </span>
             </span>
             <span className="hero-headline-line block overflow-hidden">
               <span ref={line3Ref} className="hero-headline-inner block">
-                <span className="font-serif italic font-normal">onchain</span> trading.
+                <span className="font-display italic">onchain</span> trading.
               </span>
             </span>
           </h1>
 
-          <p
-            ref={subRef}
-            className="mt-7 max-w-md text-base text-muted-foreground"
-          >
+          <p ref={subRef} className="mt-8 max-w-lg text-base text-white/75 sm:text-lg">
             Understand the market before the market moves.
           </p>
 
-          <div id="launch" className="mt-10 flex scroll-mt-32 flex-col items-center gap-4 sm:flex-row">
-            <a
-              ref={ctaPrimaryRef}
-              href="#launch"
-              className="group flex items-center gap-2 rounded-md bg-primary px-7 py-3.5 font-mono text-xs uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5"
-            >
+          <div
+            id="launch"
+            className="mt-10 flex w-full max-w-md scroll-mt-32 flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-4"
+          >
+            <HeroGlassCTA ref={ctaPrimaryRef} href="#launch" variant="primary">
               Launch Dashboard
-              <span className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
-                ↗
-              </span>
-            </a>
-            <a
-              ref={ctaSecondaryRef}
-              href="#telegram"
-              className="group flex items-center gap-2 rounded-md border border-border bg-transparent px-7 py-3.5 font-mono text-xs uppercase tracking-widest text-foreground transition-colors hover:bg-darkgray"
-            >
+            </HeroGlassCTA>
+            <HeroGlassCTA ref={ctaSecondaryRef} href="#telegram" variant="secondary">
               Launch Telegram
-              <span className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
-                ↗
-              </span>
-            </a>
+            </HeroGlassCTA>
           </div>
         </div>
       </div>
