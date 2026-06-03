@@ -28,7 +28,6 @@ export default function HeroSection({
   const eyebrowRef = useRef<HTMLParagraphElement>(null);
   const line1Ref = useRef<HTMLSpanElement>(null);
   const line2Ref = useRef<HTMLSpanElement>(null);
-  const line3Ref = useRef<HTMLSpanElement>(null);
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaPrimaryRef = useRef<HTMLAnchorElement>(null);
   const ctaSecondaryRef = useRef<HTMLAnchorElement>(null);
@@ -40,7 +39,7 @@ export default function HeroSection({
   const heroEnteredRef = useRef(false);
 
   const headlineLines = () =>
-    [line1Ref.current, line2Ref.current, line3Ref.current].filter(Boolean) as HTMLSpanElement[];
+    [line1Ref.current, line2Ref.current].filter(Boolean) as HTMLSpanElement[];
 
   useGSAP(
     (_, contextSafe) => {
@@ -52,7 +51,7 @@ export default function HeroSection({
       const ctaSecondary = ctaSecondaryRef.current;
       const scrollHint = scrollHintRef.current;
 
-      if (!column || !eyebrow || lines.length !== 3 || !sub || !ctaPrimary || !ctaSecondary) {
+      if (!column || !eyebrow || lines.length !== 2 || !sub || !ctaPrimary || !ctaSecondary) {
         return;
       }
 
@@ -70,18 +69,9 @@ export default function HeroSection({
         contentRevealedRef.current = true;
 
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const [line1, line2, line3] = [line1Ref.current, line2Ref.current, line3Ref.current];
+        const [line1, line2] = [line1Ref.current, line2Ref.current];
 
-        if (
-          !column ||
-          !eyebrow ||
-          !line1 ||
-          !line2 ||
-          !line3 ||
-          !sub ||
-          !ctaPrimary ||
-          !ctaSecondary
-        ) {
+        if (!column || !eyebrow || !line1 || !line2 || !sub || !ctaPrimary || !ctaSecondary) {
           onTransitionComplete?.();
           return;
         }
@@ -91,7 +81,7 @@ export default function HeroSection({
 
         if (reduce) {
           gsap.set(
-            [column, eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint],
+            [column, eyebrow, line1, line2, sub, ctaPrimary, ctaSecondary, scrollHint],
             {
               opacity: 1,
               y: 0,
@@ -111,7 +101,7 @@ export default function HeroSection({
 
         const tl = gsap.timeline({
           onComplete: () => {
-            gsap.set([eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint], {
+            gsap.set([eyebrow, line1, line2, sub, ctaPrimary, ctaSecondary, scrollHint], {
               clearProps: "transform",
             });
             lines.forEach((line) => line.classList.remove("hero-headline-inner--animating"));
@@ -220,7 +210,7 @@ export default function HeroSection({
 
             <div className="hero-headline-wrap relative mt-3 sm:mt-4">
               <div className="hero-headline-bloom pointer-events-none" aria-hidden />
-              <h1 className="relative text-[clamp(1.65rem,6.8vw,3.75rem)] font-normal leading-[1.12] tracking-[-0.02em] text-white sm:leading-[1.08]">
+              <h1 className="relative text-[clamp(1.5rem,5.6vw,3.35rem)] font-normal leading-[1.12] tracking-[-0.02em] text-white sm:leading-[1.08]">
                 <span className="hero-headline-line block overflow-hidden">
                   <span ref={line1Ref} className="hero-headline-inner block">
                     The <span className="font-display italic">personalised</span> intelligence
@@ -228,12 +218,7 @@ export default function HeroSection({
                 </span>
                 <span className="hero-headline-line block overflow-hidden">
                   <span ref={line2Ref} className="hero-headline-inner block">
-                    layer for
-                  </span>
-                </span>
-                <span className="hero-headline-line block overflow-hidden">
-                  <span ref={line3Ref} className="hero-headline-inner block">
-                    <span className="font-display italic">onchain</span> trading.
+                    layer for <span className="font-display italic">onchain</span> trading.
                   </span>
                 </span>
               </h1>

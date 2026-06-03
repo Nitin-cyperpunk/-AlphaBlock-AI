@@ -80,6 +80,38 @@ body {
 
 /* Hero */
 
+.hero-bg-image__img {
+  object-fit: cover;
+  object-position: center center;
+}
+
+.hero-bg-scrim {
+  background: linear-gradient(
+    180deg,
+    rgb(1 1 1 / 25%) 0%,
+    rgb(1 1 1 / 8%) 40%,
+    rgb(1 1 1 / 18%) 100%
+  );
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .hero-bg-image__img {
+    object-position: center 42%;
+    min-height: 100%;
+    min-width: 100%;
+  }
+
+  .hero-bg-scrim {
+    background: linear-gradient(
+      180deg,
+      rgb(1 1 1 / 32%) 0%,
+      rgb(1 1 1 / 12%) 45%,
+      rgb(1 1 1 / 22%) 100%
+    );
+  }
+}
+
 @keyframes hero-glow-breathe {
   0%,
   100% {

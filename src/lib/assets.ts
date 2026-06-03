@@ -7,6 +7,8 @@ const encode = (path: string) =>
     .join("/");
 
 export const assets = {
+  /** Hero section full-bleed background */
+  heroBg: encode("/Assets/bg2.png"),
   /** Logo for dark backgrounds (hero, navbar) */
   logoLight: encode("/Assets/Dark mode without BG.webp"),
   /** Logo for light backgrounds */

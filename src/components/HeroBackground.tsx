@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { useLenis } from "@/context/LenisContext";
+import { assets } from "@/lib/assets";
 import {
   buildAsciiField,
   getHeroCanvasDpr,
@@ -21,7 +23,7 @@ const BLUR_SCALE = 0.5;
 export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
   const heroRootRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLDivElement>(null);
-  const blueWashRef = useRef<HTMLDivElement>(null);
+  const bgImageRef = useRef<HTMLDivElement>(null);
   const fogRef = useRef<HTMLDivElement>(null);
   const glowShellRef = useRef<HTMLDivElement>(null);
   const glowStackRef = useRef<HTMLDivElement>(null);
@@ -76,14 +78,14 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
   useEffect(() => {
     const perf = getHeroPerfConfig();
     const base = baseRef.current;
-    const blueWash = blueWashRef.current;
+    const bgImage = bgImageRef.current;
     const fog = fogRef.current;
     const glowStack = glowStackRef.current;
     const glowShell = glowShellRef.current;
     const asciiWrap = asciiSharpRef.current?.parentElement;
     const vignette = vignetteRef.current;
 
-    if (!base || !blueWash || !fog || !glowStack || !glowShell || !asciiWrap || !vignette) {
+    if (!base || !bgImage || !fog || !glowStack || !glowShell || !asciiWrap || !vignette) {
       return;
     }
 
@@ -92,7 +94,7 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
     }
 
     glowShell.classList.add("hero-glow--pulsing");
-    gsap.set([base, blueWash, fog, glowStack, asciiWrap, vignette], { opacity: 1 });
+    gsap.set([base, bgImage, fog, glowStack, asciiWrap, vignette], { opacity: 1 });
     gsap.set(glowStack, { scale: 1 });
   }, []);
 
@@ -272,14 +274,18 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
     <div ref={heroRootRef} className="pointer-events-none absolute inset-0" aria-hidden>
       <div ref={baseRef} className="absolute inset-0 z-0 bg-[#010101]" />
 
-      <div
-        ref={blueWashRef}
-        className="absolute inset-0 z-[1]"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 46%, rgb(8 19 70 / 90%) 0%, rgb(4 8 28) 38%, rgb(1 1 1) 100%)",
-        }}
-      />
+      <div ref={bgImageRef} className="hero-bg-image absolute inset-0 z-[1] overflow-hidden">
+        <Image
+          src={assets.heroBg}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="hero-bg-image__img object-cover object-center"
+          quality={90}
+        />
+        <div className="hero-bg-scrim absolute inset-0" aria-hidden />
+      </div>
 
       <div
         ref={glowShellRef}
