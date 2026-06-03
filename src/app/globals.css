@@ -112,7 +112,6 @@ body {
   transform: translate(-50%, -50%);
 }
 
-/* Volumetric stack — #0D2DCD */
 .hero-glow-outer {
   width: 1400px;
   height: 1400px;
@@ -154,7 +153,6 @@ body {
   will-change: transform, opacity;
 }
 
-/* Atmospheric depth — large soft blue plates */
 .hero-fog {
   overflow: hidden;
 }
@@ -221,18 +219,92 @@ body {
 .hero-vignette {
   background: radial-gradient(
     ellipse 125% 105% at 50% 46%,
-    transparent 32%,
-    rgb(1 1 1 / 48%) 72%,
-    rgb(1 1 1 / 78%) 100%
+    transparent 38%,
+    rgb(1 1 1 / 32%) 78%,
+    rgb(1 1 1 / 52%) 100%
   );
+  pointer-events: none;
+}
+
+/* Hero chrome — logo left, Launch App right */
+.hero-chrome {
+  position: fixed;
+  top: 32px;
+  left: 40px;
+  right: 40px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.55s ease,
+    transform 0.55s ease;
+  pointer-events: none;
+}
+
+.hero-chrome--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: none;
+}
+
+.hero-chrome--visible .hero-chrome-logo,
+.hero-chrome--visible .hero-chrome-cta {
+  pointer-events: auto;
+}
+
+.hero-chrome-logo {
+  position: relative;
+  display: block;
+  text-decoration: none;
+}
+
+.hero-chrome-cta {
+  position: relative;
+  margin-left: auto;
+  width: auto !important;
+  flex-shrink: 0;
+}
+
+@media (max-width: 639px) {
+  .hero-chrome {
+    top: 24px;
+    left: 20px;
+    right: 20px;
+    gap: 12px;
+  }
+}
+
+.hero-headline-wrap {
+  isolation: isolate;
+}
+
+.hero-headline-bloom {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(720px, 92vw);
+  height: min(280px, 42vh);
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 50%,
+    rgb(13 45 205 / 14%) 0%,
+    rgb(13 45 205 / 5%) 45%,
+    transparent 72%
+  );
+  filter: blur(48px);
+  opacity: 0.85;
 }
 
 .hero-section--interactive {
   cursor: none;
 }
 
-.hero-section--interactive a,
-.hero-section--interactive button {
+.hero-section--interactive .hero-content-layer a,
+.hero-section--interactive .hero-content-layer button {
   cursor: none;
 }
 
@@ -337,29 +409,20 @@ body {
   width: 0.875rem;
 }
 
-.hero-glass-cta--pair.hero-glass-cta--primary {
-  border-color: transparent;
-  background: #ffffff;
-  color: #010101;
-  box-shadow: 0 2px 12px rgb(0 0 0 / 18%);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.hero-glass-cta--pair.hero-glass-cta--primary .hero-glass-cta__highlight {
-  background: linear-gradient(
-    180deg,
-    rgb(255 255 255 / 40%) 0%,
-    transparent 55%
-  );
-}
-
+.hero-glass-cta--pair.hero-glass-cta--primary,
 .hero-glass-cta--pair.hero-glass-cta--secondary {
-  background: rgb(255 255 255 / 6%);
-  border-color: rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 4%);
+  border-color: rgb(255 255 255 / 12%);
   color: #ffffff;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 2px 16px rgb(0 0 0 / 16%),
+    inset 0 1px 0 rgb(255 255 255 / 5%);
+}
+
+.hero-glass-cta--pair.hero-glass-cta--primary {
+  border-color: rgb(255 255 255 / 14%);
 }
 
 .hero-glass-cta--primary:not(.hero-glass-cta--pair) {
@@ -490,7 +553,6 @@ body {
   will-change: transform;
 }
 
-/* Lighter GPU load on phones — same stack, tuned blur */
 @media (max-width: 768px) {
   .hero-glow-core {
     filter: blur(40px);
@@ -512,8 +574,10 @@ body {
     cursor: auto;
   }
 
-  .hero-section--interactive a,
-  .hero-section--interactive button {
+  .hero-section--interactive .hero-chrome-logo,
+  .hero-section--interactive .hero-chrome-cta,
+  .hero-section--interactive .hero-content-layer a,
+  .hero-section--interactive .hero-content-layer button {
     cursor: pointer;
   }
 }
@@ -613,6 +677,11 @@ body {
 
 .hero-section .font-display {
   color: #ffffff;
+}
+
+.hero-content-layer a,
+.hero-content-layer button {
+  pointer-events: auto;
 }
 
 .hero-headline-inner {

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { HeroBackground } from "@/components/HeroBackground";
+import { HeroChrome } from "@/components/HeroChrome";
 import { HeroGlassCTA } from "@/components/HeroGlassCTA";
 import { APP_URL, EXTERNAL_LINK_PROPS } from "@/lib/urls";
 import HeroCursor from "./HeroCursor";
@@ -12,13 +13,15 @@ gsap.registerPlugin(useGSAP);
 
 type HeroSectionProps = {
   interactive?: boolean;
-  onBackgroundReady?: () => void;
+  chromeVisible?: boolean;
+  onChromeReady?: () => void;
   onTransitionComplete?: () => void;
 };
 
 export default function HeroSection({
   interactive = false,
-  onBackgroundReady,
+  chromeVisible = false,
+  onChromeReady,
   onTransitionComplete,
 }: HeroSectionProps) {
   const contentColumnRef = useRef<HTMLDivElement>(null);
@@ -133,7 +136,12 @@ export default function HeroSection({
           );
 
         if (scrollHint) {
-          tl.fromTo(scrollHint, { opacity: 0, y: 8 }, { opacity: 0.5, y: 0, duration: 0.3 }, "-=0.16");
+          tl.fromTo(
+            scrollHint,
+            { opacity: 0, y: 8 },
+            { opacity: 0.5, y: 0, duration: 0.3 },
+            "-=0.16",
+          );
         }
       });
     },
@@ -155,7 +163,7 @@ export default function HeroSection({
     const shell = heroShellRef.current;
     if (!shell) {
       revealContentRef.current();
-      requestAnimationFrame(() => onBackgroundReady?.());
+      requestAnimationFrame(() => onChromeReady?.());
       return;
     }
 
@@ -164,7 +172,7 @@ export default function HeroSection({
     if (reduce) {
       gsap.set(shell, { opacity: 1, scale: 1 });
       revealContentRef.current();
-      requestAnimationFrame(() => onBackgroundReady?.());
+      requestAnimationFrame(() => onChromeReady?.());
       return;
     }
 
@@ -172,14 +180,14 @@ export default function HeroSection({
     gsap.to(shell, {
       opacity: 1,
       scale: 1,
-      duration: 0.8,
+      duration: 0.7,
       ease: "power2.out",
       onComplete: () => {
         revealContentRef.current();
-        requestAnimationFrame(() => onBackgroundReady?.());
+        requestAnimationFrame(() => onChromeReady?.());
       },
     });
-  }, [onBackgroundReady]);
+  }, [onChromeReady]);
 
   return (
     <section
@@ -193,68 +201,75 @@ export default function HeroSection({
       <div ref={heroShellRef} className="absolute inset-0">
         <HeroBackground interactive={interactive} />
         <HeroCursor active={interactive} />
+        <HeroChrome visible={chromeVisible} />
 
-        <div ref={contentLayerRef} className="hero-content-layer relative z-10 h-full">
         <div
-          ref={contentColumnRef}
-          className="relative mx-auto flex h-full max-w-[1100px] flex-col items-center justify-center px-4 pt-[4.5rem] pb-14 text-center sm:px-6 sm:pt-20 sm:pb-24"
+          ref={contentLayerRef}
+          className="hero-content-layer relative z-10 h-full pointer-events-none"
         >
-          <p
-            ref={eyebrowRef}
-            className="max-w-[92vw] font-mono text-[0.625rem] uppercase tracking-[0.28em] text-white/90 sm:max-w-none sm:text-xs sm:tracking-[0.45em]"
-          >
-            BUILT FOR THE NEXT GENERATION OF TRADERS
-          </p>
-
-          <h1 className="mt-3 text-[clamp(1.65rem,6.8vw,3.75rem)] font-normal leading-[1.12] tracking-[-0.02em] text-white sm:mt-4 sm:leading-[1.08]">
-            <span className="hero-headline-line block overflow-hidden">
-              <span ref={line1Ref} className="hero-headline-inner block">
-                The <span className="font-display italic">personalised</span> intelligence
-              </span>
-            </span>
-            <span className="hero-headline-line block overflow-hidden">
-              <span ref={line2Ref} className="hero-headline-inner block">
-                layer for
-              </span>
-            </span>
-            <span className="hero-headline-line block overflow-hidden">
-              <span ref={line3Ref} className="hero-headline-inner block">
-                <span className="font-display italic">onchain</span> trading.
-              </span>
-            </span>
-          </h1>
-
-          <p
-            ref={subRef}
-            className="mt-4 max-w-[17rem] text-sm leading-relaxed text-white/75 sm:mt-8 sm:max-w-lg sm:text-base md:text-lg"
-          >
-            Understand the market before the market moves.
-          </p>
-
           <div
-            id="launch"
-            className="hero-cta-row mt-6 w-full max-w-[min(100%,22rem)] scroll-mt-32 sm:mt-10 sm:max-w-none"
+            ref={contentColumnRef}
+            className="relative mx-auto flex h-full max-w-[1100px] flex-col items-center justify-center px-4 pt-[4.5rem] pb-14 text-center sm:px-6 sm:pt-20 sm:pb-24"
           >
-            <HeroGlassCTA
-              ref={ctaPrimaryRef}
-              href={APP_URL}
-              variant="primary"
-              pair
-              {...EXTERNAL_LINK_PROPS}
+            <p
+              ref={eyebrowRef}
+              className="max-w-[92vw] font-mono text-[0.625rem] uppercase tracking-[0.28em] text-white/90 sm:max-w-none sm:text-xs sm:tracking-[0.45em]"
             >
-              Launch Dashboard
-            </HeroGlassCTA>
-            <HeroGlassCTA
-              ref={ctaSecondaryRef}
-              href={APP_URL}
-              variant="secondary"
-              pair
-              {...EXTERNAL_LINK_PROPS}
+              BUILT FOR THE NEXT GENERATION OF TRADERS
+            </p>
+
+            <div className="hero-headline-wrap relative mt-3 sm:mt-4">
+              <div className="hero-headline-bloom pointer-events-none" aria-hidden />
+              <h1 className="relative text-[clamp(1.65rem,6.8vw,3.75rem)] font-normal leading-[1.12] tracking-[-0.02em] text-white sm:leading-[1.08]">
+                <span className="hero-headline-line block overflow-hidden">
+                  <span ref={line1Ref} className="hero-headline-inner block">
+                    The <span className="font-display italic">personalised</span> intelligence
+                  </span>
+                </span>
+                <span className="hero-headline-line block overflow-hidden">
+                  <span ref={line2Ref} className="hero-headline-inner block">
+                    layer for
+                  </span>
+                </span>
+                <span className="hero-headline-line block overflow-hidden">
+                  <span ref={line3Ref} className="hero-headline-inner block">
+                    <span className="font-display italic">onchain</span> trading.
+                  </span>
+                </span>
+              </h1>
+            </div>
+
+            <p
+              ref={subRef}
+              className="mt-4 max-w-[17rem] text-sm leading-relaxed text-white/75 sm:mt-8 sm:max-w-lg sm:text-base md:text-lg"
             >
-              Launch Telegram
-            </HeroGlassCTA>
+              Understand the market before the market moves.
+            </p>
+
+            <div
+              id="launch"
+              className="hero-cta-row pointer-events-auto mt-6 w-full max-w-[min(100%,22rem)] scroll-mt-32 sm:mt-10 sm:max-w-none"
+            >
+              <HeroGlassCTA
+                ref={ctaPrimaryRef}
+                href={APP_URL}
+                variant="primary"
+                pair
+                {...EXTERNAL_LINK_PROPS}
+              >
+                Launch Dashboard
+              </HeroGlassCTA>
+              <HeroGlassCTA
+                ref={ctaSecondaryRef}
+                href={APP_URL}
+                variant="secondary"
+                pair
+                {...EXTERNAL_LINK_PROPS}
+              >
+                Launch Telegram
+              </HeroGlassCTA>
+            </div>
           </div>
-        </div>
         </div>
       </div>
     </section>

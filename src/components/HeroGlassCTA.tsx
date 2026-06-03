@@ -68,19 +68,14 @@ export const HeroGlassCTA = forwardRef<HTMLAnchorElement, HeroGlassCTAProps>(
       const onHoverIn = () => {
         onEnter();
         const isPrimary = variant === "primary";
-        const isPairPrimary = isPrimary && el.classList.contains("hero-glass-cta--pair");
         gsap.to(el, {
           scale: isPrimary ? 1.03 : 1.02,
-          backgroundColor: isPairPrimary
-            ? "rgba(255, 255, 255, 1)"
-            : isPrimary
-              ? "rgba(255, 255, 255, 0.08)"
-              : "rgba(255, 255, 255, 0.03)",
-          borderColor: isPairPrimary
-            ? "transparent"
-            : isPrimary
-              ? "rgba(255, 255, 255, 0.25)"
-              : "rgba(255, 255, 255, 0.22)",
+          backgroundColor: isPrimary
+            ? "rgba(255, 255, 255, 0.08)"
+            : "rgba(255, 255, 255, 0.05)",
+          borderColor: isPrimary
+            ? "rgba(255, 255, 255, 0.22)"
+            : "rgba(255, 255, 255, 0.18)",
           boxShadow: isPrimary
             ? "0 0 28px rgba(13, 45, 205, 0.22), 0 8px 32px rgba(0, 0, 0, 0.2)"
             : "0 0 20px rgba(13, 45, 205, 0.12), 0 6px 24px rgba(0, 0, 0, 0.18)",
@@ -96,20 +91,18 @@ export const HeroGlassCTA = forwardRef<HTMLAnchorElement, HeroGlassCTAProps>(
         cancelAnimationFrame(rafRef.current);
         onLeave();
         const isPrimary = variant === "primary";
-        const isPairPrimary = isPrimary && el.classList.contains("hero-glass-cta--pair");
+        const isPair = el.classList.contains("hero-glass-cta--pair");
         gsap.to(el, {
           scale: 1,
-          backgroundColor: isPairPrimary
-            ? "#ffffff"
+          backgroundColor: isPair
+            ? "rgba(255, 255, 255, 0.04)"
             : isPrimary
               ? "rgba(255, 255, 255, 0.04)"
               : "rgba(255, 255, 255, 0)",
-          borderColor: isPairPrimary ? "transparent" : "rgba(255, 255, 255, 0.12)",
-          boxShadow: isPairPrimary
-            ? "0 2px 12px rgba(0, 0, 0, 0.18)"
-            : isPrimary
-              ? "0 4px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
-              : "0 4px 20px rgba(0, 0, 0, 0.18)",
+          borderColor: "rgba(255, 255, 255, 0.12)",
+          boxShadow: isPrimary
+            ? "0 4px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)"
+            : "0 4px 20px rgba(0, 0, 0, 0.18)",
           duration: 0.4,
           ease: "power2.out",
         });

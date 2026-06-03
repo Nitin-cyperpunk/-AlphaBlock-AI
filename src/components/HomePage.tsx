@@ -4,12 +4,11 @@ import { useCallback, useState } from "react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeroSection from "@/components/HeroSection";
 import Loader from "@/components/Loader";
-import Navbar from "@/components/Navbar";
 import SetupSection from "@/components/SetupSection";
 
 export default function HomePage() {
   const [showHero, setShowHero] = useState(false);
-  const [navVisible, setNavVisible] = useState(false);
+  const [chromeVisible, setChromeVisible] = useState(false);
   const [interactive, setInteractive] = useState(false);
 
   const handlePreloaderComplete = useCallback(() => {
@@ -17,8 +16,8 @@ export default function HomePage() {
     requestAnimationFrame(() => setShowHero(true));
   }, []);
 
-  const handleBackgroundReady = useCallback(() => {
-    setNavVisible(true);
+  const handleChromeReady = useCallback(() => {
+    setChromeVisible(true);
   }, []);
 
   const handleTransitionComplete = useCallback(() => {
@@ -31,17 +30,15 @@ export default function HomePage() {
       {!showHero && <Loader onComplete={handlePreloaderComplete} />}
 
       {showHero && (
-        <>
-          <Navbar visible={navVisible} />
-          <main className="relative bg-[#010101]">
-            <HeroSection
-              interactive={interactive}
-              onBackgroundReady={handleBackgroundReady}
-              onTransitionComplete={handleTransitionComplete}
-            />
-            <SetupSection />
-          </main>
-        </>
+        <main className="relative bg-[#010101]">
+          <HeroSection
+            interactive={interactive}
+            chromeVisible={chromeVisible}
+            onChromeReady={handleChromeReady}
+            onTransitionComplete={handleTransitionComplete}
+          />
+          <SetupSection />
+        </main>
       )}
     </>
   );
