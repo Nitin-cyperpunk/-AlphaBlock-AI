@@ -26,12 +26,12 @@ export default function SmoothScrollProvider({
     }
 
     const instance = new Lenis({
-      duration: 1,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      lerp: 0.08,
+      duration: 1.4,
       orientation: "vertical",
       smoothWheel: true,
-      wheelMultiplier: 0.9,
-      touchMultiplier: 1.5,
+      wheelMultiplier: 0.8,
+      touchMultiplier: 1,
       infinite: false,
     });
 

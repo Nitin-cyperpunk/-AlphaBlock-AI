@@ -7,8 +7,21 @@ const encode = (path: string) =>
     .join("/");
 
 export const assets = {
-  /** Hero section full-bleed background */
-  heroBg: encode("/Assets/bg2.png"),
+  /** Setup section device mockups */
+  macbook: encode("/macbook.png"),
+  closeMacbook: encode("/closemacbook.png"),
+  iphone: encode("/iphone.png"),
+  laptopScreen1: encode("/laptop1.png"),
+  laptopScreen2: encode("/laptop2.png"),
+  mobileScreen1: encode("/mobile1.png"),
+  mobileScreen2: encode("/mobile2.png"),
+  mobileLandscape1: encode("/landscape1.png"),
+  mobileLandscape2: encode("/landscape 2.png"),
+  /** Hero + setup atmosphere — subtle grid overlay, institutional cinematic tone */
+  heroBg: encode("/Assets/cloud.png"),
+  /** Alternate hero backgrounds */
+  heroBgMountain: encode("/Assets/moutain.png"),
+  heroBgGarden: encode("/Assets/flowergarden.png"),
   /** Logo for dark backgrounds (hero, navbar) */
   logoLight: encode("/Assets/Dark mode without BG.webp"),
   /** Logo for light backgrounds */

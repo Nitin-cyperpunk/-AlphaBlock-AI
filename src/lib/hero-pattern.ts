@@ -9,7 +9,7 @@ export const ARROW_PATTERN_URL = `url("data:image/svg+xml,${ARROW_PATTERN_SVG}")
 
 /** Absolute timeline anchors (seconds from page load). */
 export const TIMELINE = {
-  preloaderEnd: 4,
+  preloaderEnd: 5.4,
   environmentEnd: 5,
   glowEnd: 5.8,
   contentEnd: 7,
