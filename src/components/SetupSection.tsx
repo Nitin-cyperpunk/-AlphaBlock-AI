@@ -111,6 +111,7 @@ export default function SetupSection() {
   const cloudRef = useRef<HTMLDivElement>(null);
   const bgDimRef = useRef<HTMLDivElement>(null);
   const spotlightRef = useRef<HTMLDivElement>(null);
+  const footerHandoffRef = useRef<HTMLDivElement>(null);
   const scrollProgressRef = useRef(0);
   const telegramRef = useRef<HTMLDivElement>(null);
   const telegramFeedRef = useRef<HTMLDivElement>(null);
@@ -449,6 +450,8 @@ export default function SetupSection() {
                   item.classList.toggle("intel-side-nav__item--active", index === activeNav);
                 });
               },
+              onLeave: () => requestAnimationFrame(() => ScrollTrigger.refresh()),
+              onEnterBack: () => requestAnimationFrame(() => ScrollTrigger.refresh()),
             },
           });
 
@@ -823,6 +826,16 @@ export default function SetupSection() {
             askStart,
           );
 
+          const footerRevealStart = intelT(0.62);
+          const footerHandoff = footerHandoffRef.current;
+          if (footerHandoff) {
+            gsap.set(footerHandoff, { opacity: 0 });
+            timeline.to(cloud, { opacity: 0.22, duration: intelT(1) - footerRevealStart, ease: "power1.inOut" }, footerRevealStart);
+            timeline.to(glow, { opacity: 0.55, yPercent: 18, duration: intelT(1) - footerRevealStart, ease: "power1.inOut" }, footerRevealStart);
+            timeline.to(bgDim, { opacity: 0.48, duration: intelT(1) - footerRevealStart, ease: "power1.inOut" }, footerRevealStart);
+            timeline.to(footerHandoff, { opacity: 1, duration: intelT(1) - footerRevealStart, ease: "power1.inOut" }, footerRevealStart);
+          }
+
           context.add(() => {
             laptopFloat?.kill();
             phoneFloat?.kill();
@@ -859,6 +872,8 @@ export default function SetupSection() {
           dimRef={bgDimRef}
           spotlightRef={spotlightRef}
         />
+
+        <div ref={footerHandoffRef} className="setup-footer-handoff pointer-events-none absolute inset-x-0 bottom-0 z-[14] opacity-0" aria-hidden />
 
         <div ref={storyRef} className="setup-story pointer-events-none z-30">
           {SETUP_STORY_CHAPTERS.map((chapter, index) => (

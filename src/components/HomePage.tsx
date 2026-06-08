@@ -6,6 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Loader from "@/components/Loader";
 import HeroSection from "@/components/HeroSection";
 import SetupSection from "@/components/SetupSection";
+import FooterSection from "@/components/FooterSection";
 
 const HERO_TRANSITION_S = 1.8;
 const HERO_ENTER_Y = 40;
@@ -116,6 +117,7 @@ export default function HomePage() {
           onTransitionComplete={handleTransitionComplete}
         />
         <SetupSection />
+        <FooterSection />
       </main>
 
       {loaderVisible && <Loader ref={loaderRef} onReady={handleLoaderReady} />}
