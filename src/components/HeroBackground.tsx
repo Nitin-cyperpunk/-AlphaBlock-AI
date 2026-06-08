@@ -1,8 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useLenis } from "@/context/LenisContext";
+
+gsap.registerPlugin(ScrollTrigger);
+import { assets } from "@/lib/assets";
 import {
   buildAsciiField,
   getHeroCanvasDpr,
@@ -14,14 +19,20 @@ import { getHeroPerfConfig, type HeroPerfConfig } from "@/lib/hero-performance";
 
 type HeroBackgroundProps = {
   interactive?: boolean;
+  heroEnvRef?: React.RefObject<number>;
+  bootComplete?: boolean;
 };
 
 const BLUR_SCALE = 0.5;
 
-export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
+export function HeroBackground({
+  interactive = false,
+  heroEnvRef,
+  bootComplete = false,
+}: HeroBackgroundProps) {
   const heroRootRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLDivElement>(null);
-  const blueWashRef = useRef<HTMLDivElement>(null);
+  const bgImageRef = useRef<HTMLDivElement>(null);
   const fogRef = useRef<HTMLDivElement>(null);
   const glowShellRef = useRef<HTMLDivElement>(null);
   const glowStackRef = useRef<HTMLDivElement>(null);
@@ -37,7 +48,8 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
 
   useEffect(() => {
     interactiveRef.current = interactive;
-  }, [interactive]);
+    environmentReadyRef.current = bootComplete || interactive;
+  }, [interactive, bootComplete]);
 
   useEffect(() => {
     const smooth = scrollSmoothRef.current;
@@ -76,14 +88,14 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
   useEffect(() => {
     const perf = getHeroPerfConfig();
     const base = baseRef.current;
-    const blueWash = blueWashRef.current;
+    const bgImage = bgImageRef.current;
     const fog = fogRef.current;
     const glowStack = glowStackRef.current;
     const glowShell = glowShellRef.current;
     const asciiWrap = asciiSharpRef.current?.parentElement;
     const vignette = vignetteRef.current;
 
-    if (!base || !blueWash || !fog || !glowStack || !glowShell || !asciiWrap || !vignette) {
+    if (!base || !bgImage || !fog || !glowStack || !glowShell || !asciiWrap || !vignette) {
       return;
     }
 
@@ -92,9 +104,59 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
     }
 
     glowShell.classList.add("hero-glow--pulsing");
-    gsap.set([base, blueWash, fog, glowStack, asciiWrap, vignette], { opacity: 1 });
+    const layerOpacity = bootComplete || (heroEnvRef?.current ?? 0) > 0.01 ? 1 : 0;
+    gsap.set([base, bgImage, fog, glowStack, asciiWrap, vignette], {
+      opacity: layerOpacity,
+    });
     gsap.set(glowStack, { scale: 1 });
-  }, []);
+
+    const section = heroRootRef.current?.closest("section");
+    if (section) {
+      const handoff = ScrollTrigger.create({
+        trigger: section,
+        start: "top top",
+        end: "bottom top",
+        scrub: 0.5,
+        onUpdate: (self) => {
+          const p = self.progress;
+          gsap.set(bgImage, { opacity: 1 - p * 0.52 });
+          gsap.set(fog, { opacity: 1 - p * 0.4 });
+          gsap.set(glowShell, { opacity: 1 - p * 0.3 });
+          if (asciiWrap) gsap.set(asciiWrap, { opacity: 1 - p * 0.58 });
+          gsap.set(vignette, { opacity: 0.85 + p * 0.15 });
+        },
+      });
+
+      return () => handoff.kill();
+    }
+  }, [bootComplete, heroEnvRef]);
+
+  useEffect(() => {
+    const base = baseRef.current;
+    const bgImage = bgImageRef.current;
+    const fog = fogRef.current;
+    const glowStack = glowStackRef.current;
+    const asciiWrap = asciiSharpRef.current?.parentElement;
+    const vignette = vignetteRef.current;
+
+    if (!base || !bgImage || !fog || !glowStack || !asciiWrap || !vignette) return;
+    if (bootComplete) {
+      gsap.set([base, bgImage, fog, glowStack, asciiWrap, vignette], { opacity: 1 });
+      return;
+    }
+
+    let raf = 0;
+    const layers = [base, bgImage, fog, glowStack, asciiWrap, vignette];
+
+    const tick = () => {
+      const env = heroEnvRef?.current ?? 0;
+      gsap.set(layers, { opacity: env });
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [heroEnvRef, bootComplete]);
 
   useEffect(() => {
     const sharpCanvas = asciiSharpRef.current;
@@ -269,23 +331,27 @@ export function HeroBackground({ interactive = false }: HeroBackgroundProps) {
   }, []);
 
   return (
-    <div ref={heroRootRef} className="pointer-events-none absolute inset-0" aria-hidden>
+    <div ref={heroRootRef} className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       <div ref={baseRef} className="absolute inset-0 z-0 bg-[#010101]" />
 
-      <div
-        ref={blueWashRef}
-        className="absolute inset-0 z-[1]"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 46%, rgb(8 19 70 / 90%) 0%, rgb(4 8 28) 38%, rgb(1 1 1) 100%)",
-        }}
-      />
+      <div ref={bgImageRef} className="hero-bg-image absolute inset-0 z-[1] overflow-hidden">
+        <Image
+          src={assets.heroBg}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="hero-bg-image__img object-cover object-center"
+          quality={90}
+        />
+        <div className="hero-bg-scrim absolute inset-0" aria-hidden />
+      </div>
 
       <div
         ref={glowShellRef}
-        className="hero-glow absolute left-1/2 top-[46%] z-[2] -translate-x-1/2 -translate-y-1/2"
+        className="hero-glow pointer-events-none absolute inset-0 z-[2]"
       >
-        <div ref={glowStackRef} className="hero-glow-stack">
+        <div ref={glowStackRef} className="hero-glow-stack absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2">
           <div className="hero-glow-outer" aria-hidden />
           <div className="hero-glow-mid" aria-hidden />
           <div className="hero-glow-core" aria-hidden />

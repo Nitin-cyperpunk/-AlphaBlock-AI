@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { HeroBackground } from "@/components/HeroBackground";
@@ -14,33 +14,45 @@ gsap.registerPlugin(useGSAP);
 type HeroSectionProps = {
   interactive?: boolean;
   chromeVisible?: boolean;
-  onChromeReady?: () => void;
+  contentReveal?: boolean;
+  bootComplete?: boolean;
+  heroEnvRef?: React.RefObject<number>;
+  heroShellRef?: React.RefObject<HTMLDivElement | null>;
   onTransitionComplete?: () => void;
 };
 
 export default function HeroSection({
   interactive = false,
   chromeVisible = false,
-  onChromeReady,
+  contentReveal = false,
+  bootComplete = false,
+  heroEnvRef,
+  heroShellRef,
   onTransitionComplete,
 }: HeroSectionProps) {
   const contentColumnRef = useRef<HTMLDivElement>(null);
   const eyebrowRef = useRef<HTMLParagraphElement>(null);
   const line1Ref = useRef<HTMLSpanElement>(null);
   const line2Ref = useRef<HTMLSpanElement>(null);
-  const line3Ref = useRef<HTMLSpanElement>(null);
   const subRef = useRef<HTMLParagraphElement>(null);
   const ctaPrimaryRef = useRef<HTMLAnchorElement>(null);
   const ctaSecondaryRef = useRef<HTMLAnchorElement>(null);
   const scrollHintRef = useRef<HTMLDivElement>(null);
-  const heroShellRef = useRef<HTMLDivElement>(null);
   const contentLayerRef = useRef<HTMLDivElement>(null);
   const contentRevealedRef = useRef(false);
   const revealContentRef = useRef<() => void>(() => {});
-  const heroEnteredRef = useRef(false);
+  const shellInitRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (bootComplete || shellInitRef.current) return;
+    const shell = heroShellRef?.current;
+    if (!shell) return;
+    shellInitRef.current = true;
+    gsap.set(shell, { opacity: 0, y: 40, force3D: true });
+  }, [bootComplete, heroShellRef]);
 
   const headlineLines = () =>
-    [line1Ref.current, line2Ref.current, line3Ref.current].filter(Boolean) as HTMLSpanElement[];
+    [line1Ref.current, line2Ref.current].filter(Boolean) as HTMLSpanElement[];
 
   useGSAP(
     (_, contextSafe) => {
@@ -52,7 +64,7 @@ export default function HeroSection({
       const ctaSecondary = ctaSecondaryRef.current;
       const scrollHint = scrollHintRef.current;
 
-      if (!column || !eyebrow || lines.length !== 3 || !sub || !ctaPrimary || !ctaSecondary) {
+      if (!column || !eyebrow || lines.length !== 2 || !sub || !ctaPrimary || !ctaSecondary) {
         return;
       }
 
@@ -60,7 +72,7 @@ export default function HeroSection({
       gsap.set(eyebrow, { opacity: 0, y: 10 });
       gsap.set(lines, { yPercent: 108, opacity: 1 });
       gsap.set(sub, { opacity: 0, y: 10 });
-      gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, y: 20 });
+      gsap.set([ctaPrimary, ctaSecondary], { opacity: 0, y: 16 });
       if (scrollHint) gsap.set(scrollHint, { opacity: 0, y: 6 });
 
       if (!contextSafe) return;
@@ -70,18 +82,9 @@ export default function HeroSection({
         contentRevealedRef.current = true;
 
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const [line1, line2, line3] = [line1Ref.current, line2Ref.current, line3Ref.current];
+        const [line1, line2] = [line1Ref.current, line2Ref.current];
 
-        if (
-          !column ||
-          !eyebrow ||
-          !line1 ||
-          !line2 ||
-          !line3 ||
-          !sub ||
-          !ctaPrimary ||
-          !ctaSecondary
-        ) {
+        if (!column || !eyebrow || !line1 || !line2 || !sub || !ctaPrimary || !ctaSecondary) {
           onTransitionComplete?.();
           return;
         }
@@ -91,7 +94,7 @@ export default function HeroSection({
 
         if (reduce) {
           gsap.set(
-            [column, eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint],
+            [column, eyebrow, line1, line2, sub, ctaPrimary, ctaSecondary, scrollHint],
             {
               opacity: 1,
               y: 0,
@@ -111,7 +114,7 @@ export default function HeroSection({
 
         const tl = gsap.timeline({
           onComplete: () => {
-            gsap.set([eyebrow, line1, line2, line3, sub, ctaPrimary, ctaSecondary, scrollHint], {
+            gsap.set([eyebrow, line1, line2, sub, ctaPrimary, ctaSecondary, scrollHint], {
               clearProps: "transform",
             });
             lines.forEach((line) => line.classList.remove("hero-headline-inner--animating"));
@@ -120,27 +123,27 @@ export default function HeroSection({
           defaults: { ease: "power2.out", force3D: true },
         });
 
-        tl.fromTo(eyebrow, { opacity: 0, y: 14 }, { opacity: 0.7, y: 0, duration: 0.44 })
+        tl.fromTo(eyebrow, { opacity: 0, y: 12 }, { opacity: 0.7, y: 0, duration: 0.55 })
           .fromTo(
             lines,
-            { yPercent: 105 },
-            { yPercent: 0, duration: 0.52, stagger: 0.075, ease: "power2.out" },
-            "-=0.24",
+            { yPercent: 102 },
+            { yPercent: 0, duration: 0.62, stagger: 0.07, ease: "power2.out" },
+            "-=0.32",
           )
-          .fromTo(sub, { opacity: 0, y: 12 }, { opacity: 0.75, y: 0, duration: 0.36 }, "-=0.28")
+          .fromTo(sub, { opacity: 0, y: 10 }, { opacity: 0.75, y: 0, duration: 0.45 }, "-=0.34")
           .fromTo(
             [ctaPrimary, ctaSecondary],
-            { opacity: 0, y: 14 },
-            { opacity: 1, y: 0, duration: 0.36, stagger: 0.06 },
-            "-=0.2",
+            { opacity: 0, y: 12 },
+            { opacity: 1, y: 0, duration: 0.42, stagger: 0.07 },
+            "-=0.28",
           );
 
         if (scrollHint) {
           tl.fromTo(
             scrollHint,
-            { opacity: 0, y: 8 },
-            { opacity: 0.5, y: 0, duration: 0.3 },
-            "-=0.16",
+            { opacity: 0, y: 6 },
+            { opacity: 0.5, y: 0, duration: 0.32 },
+            "-=0.18",
           );
         }
       });
@@ -152,56 +155,27 @@ export default function HeroSection({
   );
 
   useEffect(() => {
-    contentRevealedRef.current = false;
-    heroEnteredRef.current = false;
-  }, []);
-
-  useEffect(() => {
-    if (heroEnteredRef.current) return;
-    heroEnteredRef.current = true;
-
-    const shell = heroShellRef.current;
-    if (!shell) {
-      revealContentRef.current();
-      requestAnimationFrame(() => onChromeReady?.());
-      return;
-    }
-
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    if (reduce) {
-      gsap.set(shell, { opacity: 1, scale: 1 });
-      revealContentRef.current();
-      requestAnimationFrame(() => onChromeReady?.());
-      return;
-    }
-
-    gsap.set(shell, { opacity: 0, scale: 1.02, transformOrigin: "50% 50%" });
-    gsap.to(shell, {
-      opacity: 1,
-      scale: 1,
-      duration: 0.7,
-      ease: "power2.out",
-      onComplete: () => {
-        revealContentRef.current();
-        requestAnimationFrame(() => onChromeReady?.());
-      },
-    });
-  }, [onChromeReady]);
+    if (!contentReveal) return;
+    revealContentRef.current();
+  }, [contentReveal]);
 
   return (
     <section
       id="how-it-works"
-      className={`hero-section relative h-screen scroll-mt-28 overflow-hidden border-b border-[#141414] bg-[#010101]${
+      className={`hero-section relative h-screen scroll-mt-28 overflow-hidden bg-[#010101]${
         interactive ? " hero-section--interactive" : ""
       }`}
     >
       <div id="hero" className="pointer-events-none absolute top-0 h-0 w-0" aria-hidden />
 
-      <div ref={heroShellRef} className="absolute inset-0">
-        <HeroBackground interactive={interactive} />
+      <div
+        ref={heroShellRef}
+        className={`absolute inset-0 overflow-hidden${bootComplete ? " hero-shell--revealed" : ""}`}
+      >
+        <HeroBackground interactive={interactive} heroEnvRef={heroEnvRef} bootComplete={bootComplete} />
         <HeroCursor active={interactive} />
         <HeroChrome visible={chromeVisible} />
+        <div className="hero-section__seam" aria-hidden />
 
         <div
           ref={contentLayerRef}
@@ -211,16 +185,13 @@ export default function HeroSection({
             ref={contentColumnRef}
             className="relative mx-auto flex h-full max-w-[1100px] flex-col items-center justify-center px-4 pt-[4.5rem] pb-14 text-center sm:px-6 sm:pt-20 sm:pb-24"
           >
-            <p
-              ref={eyebrowRef}
-              className="max-w-[92vw] font-mono text-[0.625rem] uppercase tracking-[0.28em] text-white/90 sm:max-w-none sm:text-xs sm:tracking-[0.45em]"
-            >
+            <p ref={eyebrowRef} className="brand-eyebrow max-w-[92vw] sm:max-w-none">
               BUILT FOR THE NEXT GENERATION OF TRADERS
             </p>
 
             <div className="hero-headline-wrap relative mt-3 sm:mt-4">
               <div className="hero-headline-bloom pointer-events-none" aria-hidden />
-              <h1 className="relative text-[clamp(1.65rem,6.8vw,3.75rem)] font-normal leading-[1.12] tracking-[-0.02em] text-white sm:leading-[1.08]">
+              <h1 className="brand-headline relative sm:leading-[1.08]">
                 <span className="hero-headline-line block overflow-hidden">
                   <span ref={line1Ref} className="hero-headline-inner block">
                     The <span className="font-display italic">personalised</span> intelligence
@@ -228,21 +199,13 @@ export default function HeroSection({
                 </span>
                 <span className="hero-headline-line block overflow-hidden">
                   <span ref={line2Ref} className="hero-headline-inner block">
-                    layer for
-                  </span>
-                </span>
-                <span className="hero-headline-line block overflow-hidden">
-                  <span ref={line3Ref} className="hero-headline-inner block">
-                    <span className="font-display italic">onchain</span> trading.
+                    layer for <span className="font-display italic">onchain</span> trading.
                   </span>
                 </span>
               </h1>
             </div>
 
-            <p
-              ref={subRef}
-              className="mt-4 max-w-[17rem] text-sm leading-relaxed text-white/75 sm:mt-8 sm:max-w-lg sm:text-base md:text-lg"
-            >
+            <p ref={subRef} className="brand-body mt-4 max-w-[17rem] sm:mt-8 sm:max-w-lg">
               Understand the market before the market moves.
             </p>
 

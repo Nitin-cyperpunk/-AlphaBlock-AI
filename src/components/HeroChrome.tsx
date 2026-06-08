@@ -23,7 +23,7 @@ export function HeroChrome({ visible = false }: HeroChromeProps) {
           width={160}
           height={48}
           priority
-          className="hero-chrome-logo__img h-auto w-[clamp(88px,20vw,128px)] object-contain object-left"
+          className="hero-chrome-logo__img h-auto w-[clamp(84px,19vw,124px)] object-contain object-left"
         />
       </a>
 
