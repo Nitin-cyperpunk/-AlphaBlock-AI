@@ -112,7 +112,9 @@ function FooterNetwork({
 
   return (
     <svg
-      className={`footer-network pointer-events-none absolute inset-0 h-full w-full ${mobile ? "footer-network--sparse" : "footer-network--dense"}`}
+      className={`footer-network pointer-events-none absolute inset-0 h-full w-full ${
+        mobile ? "footer-network--sparse" : "footer-network--dense"
+      }`}
       viewBox="0 0 100 100"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden
@@ -207,8 +209,8 @@ export default function FooterSection() {
         const preset = isDesktop
           ? MOTION_PRESETS.desktop
           : isTablet
-            ? MOTION_PRESETS.tablet
-            : MOTION_PRESETS.mobile;
+          ? MOTION_PRESETS.tablet
+          : MOTION_PRESETS.mobile;
 
         gsap.set(divider, { scaleX: 0, transformOrigin: "center center" });
         gsap.set(bloom, { opacity: 0, scale: 0.6 });
@@ -248,12 +250,7 @@ export default function FooterSection() {
           0,
         );
 
-        tl.fromTo(
-          divider,
-          { scaleX: 0 },
-          { scaleX: 1, duration: 0.38, ease: "power2.out" },
-          0.14,
-        );
+        tl.fromTo(divider, { scaleX: 0 }, { scaleX: 1, duration: 0.38, ease: "power2.out" }, 0.14);
 
         tl.fromTo(
           bloom,
@@ -315,12 +312,20 @@ export default function FooterSection() {
         <div ref={cardBlurRef} className="footer-card-blur w-full min-w-0">
           <div className="footer-divider-wrap relative">
             <div ref={dividerRef} className="footer-divider h-px w-full" />
-            <div ref={bloomRef} className="footer-divider-bloom pointer-events-none absolute" aria-hidden />
+            <div
+              ref={bloomRef}
+              className="footer-divider-bloom pointer-events-none absolute"
+              aria-hidden
+            />
           </div>
 
           <div ref={colsRef} className="footer-grid">
             <div data-reveal className="footer-brand">
-              <a href="#hero" className="footer-brand__logo inline-block" aria-label="AlphaBlock home">
+              <a
+                href="#hero"
+                className="footer-brand__logo inline-block"
+                aria-label="AlphaBlock home"
+              >
                 <Image
                   src={assets.logoDark}
                   alt=""
@@ -372,7 +377,10 @@ export default function FooterSection() {
                 {copied ? (
                   <Check className="footer-contract__icon shrink-0 text-emerald-600" aria-hidden />
                 ) : (
-                  <Copy className="footer-contract__icon shrink-0 opacity-45 group-hover:opacity-85" aria-hidden />
+                  <Copy
+                    className="footer-contract__icon shrink-0 opacity-45 group-hover:opacity-85"
+                    aria-hidden
+                  />
                 )}
                 <span className="sr-only">Copy contract address</span>
               </button>
