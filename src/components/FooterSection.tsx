@@ -23,12 +23,12 @@ import { EXTERNAL_LINK_PROPS } from "@/lib/urls";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const FOOTER_SCRUB = 1.65;
+const FOOTER_SCRUB = 1.1;
 
 const MOTION_PRESETS = {
-  desktop: { y: 300, scale: 0.92, blur: 20, opacity: 0.82 },
-  tablet: { y: 160, scale: 0.96, blur: 14, opacity: 0.85 },
-  mobile: { y: 100, scale: 0.98, blur: 10, opacity: 0.88 },
+  desktop: { y: 200, scale: 0.96, blur: 10, opacity: 0.9 },
+  tablet: { y: 120, scale: 0.98, blur: 6, opacity: 0.92 },
+  mobile: { y: 60, scale: 0.99, blur: 0, opacity: 0.95 },
 } as const;
 
 function FooterSocialIcon({ icon }: { icon: (typeof FOOTER_SOCIAL)[number]["icon"] }) {
@@ -167,7 +167,6 @@ export default function FooterSection() {
     const divider = dividerRef.current;
     const bloom = bloomRef.current;
     const cols = colsRef.current;
-    const network = networkRef.current;
     if (!section || !cardMotion || !cardBlur || !divider || !bloom || !cols) return;
 
     const blocks = Array.from(cols.querySelectorAll<HTMLElement>("[data-reveal]"));
@@ -224,24 +223,12 @@ export default function FooterSection() {
         });
         gsap.set(cardBlur, { "--footer-blur": preset.blur, opacity: preset.opacity });
 
-        if (network && isDesktop) {
-          const drift = gsap.to(network, {
-            x: 8,
-            y: -6,
-            duration: 20,
-            repeat: -1,
-            yoyo: true,
-            ease: "sine.inOut",
-          });
-          context.add(() => drift.kill());
-        }
-
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: section,
             start: isDesktop ? "top bottom" : "top bottom+=5%",
             end: isDesktop ? "top 30%" : "top 35%",
-            scrub: isDesktop ? FOOTER_SCRUB : 1.2,
+            scrub: isDesktop ? FOOTER_SCRUB : 0.85,
             invalidateOnRefresh: true,
           },
           defaults: { ease: "none" },
@@ -257,7 +244,7 @@ export default function FooterSection() {
         tl.fromTo(
           cardBlur,
           { "--footer-blur": preset.blur, opacity: preset.opacity },
-          { "--footer-blur": 0, opacity: 1, duration: 0.78, ease: "power1.out" },
+          { "--footer-blur": 0, opacity: 1, duration: 0.78, ease: "power2.out" },
           0,
         );
 
@@ -312,7 +299,7 @@ export default function FooterSection() {
       ref={sectionRef}
       id="footer"
       aria-label="Site footer"
-      className="footer-section footer-card-shell relative w-full overflow-x-hidden text-white"
+      className="footer-section footer-card-shell relative w-full overflow-x-hidden text-[#111827]"
     >
       <div className="footer-card-surface pointer-events-none absolute inset-0" aria-hidden>
         <pre className="footer-ascii footer-ascii--desktop">{FOOTER_ASCII_RESIDUE.repeat(8)}</pre>
@@ -335,7 +322,7 @@ export default function FooterSection() {
             <div data-reveal className="footer-brand">
               <a href="#hero" className="footer-brand__logo inline-block" aria-label="AlphaBlock home">
                 <Image
-                  src={assets.logoLight}
+                  src={assets.logoDark}
                   alt=""
                   width={160}
                   height={50}
@@ -383,7 +370,7 @@ export default function FooterSection() {
                   {truncateContractMobile(FOOTER_CONTRACT)}
                 </span>
                 {copied ? (
-                  <Check className="footer-contract__icon shrink-0 text-[#1f7a3a]" aria-hidden />
+                  <Check className="footer-contract__icon shrink-0 text-emerald-600" aria-hidden />
                 ) : (
                   <Copy className="footer-contract__icon shrink-0 opacity-45 group-hover:opacity-85" aria-hidden />
                 )}

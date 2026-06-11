@@ -31,7 +31,7 @@ export const Laptop = forwardRef<HTMLDivElement, LaptopProps>(function Laptop(
       <div
         ref={shadowRef}
         aria-hidden
-        className="device-layer__shadow absolute -bottom-4 left-1/2 h-8 w-[78%] -translate-x-1/2 rounded-[50%] bg-black/60"
+        className="device-layer__shadow absolute -bottom-4 left-1/2 h-8 w-[78%] -translate-x-1/2 rounded-[50%] bg-slate-900/15"
       />
 
       <div
@@ -40,7 +40,7 @@ export const Laptop = forwardRef<HTMLDivElement, LaptopProps>(function Laptop(
         style={{ transform: "rotateX(90deg)", transformStyle: "preserve-3d" }}
       >
         <div
-          className="relative rounded-[18px] border border-white/10 shadow-[0_30px_80px_-30px_rgba(13,45,205,0.5)]"
+          className="relative rounded-[18px] border border-slate-900/10 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.18)]"
           style={{
             background: "linear-gradient(180deg, #0a0a0a 0%, #141414 100%)",
             padding: "14px 14px 18px 14px",

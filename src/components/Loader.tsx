@@ -6,6 +6,14 @@ import { gsap } from "gsap";
 import { assets } from "@/lib/assets";
 
 const PROGRESS_BLOCKS = 24;
+
+/** Compress boot to ~7s total (standby + wake + script + finale). */
+const BOOT_STANDBY_S = 0.5;
+const BOOT_WAKE_AT = 0.5;
+const BOOT_SCRIPT_AT = 1.75;
+const BOOT_TIME_SCALE = 0.52;
+const BOOT_FINAL_AT = 6.35;
+const BOOT_END_PAUSE_S = 0.35;
 const SIG_CHARS = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
 
 const SYS_INFO = [
@@ -215,7 +223,6 @@ const Loader = forwardRef<HTMLDivElement, LoaderProps>(function Loader({ onReady
       const t = window.setTimeout(() => onReadyRef.current(), 600);
       return () => {
         clearTimeout(t);
-        document.body.style.overflow = "";
       };
     }
 
@@ -284,72 +291,72 @@ const Loader = forwardRef<HTMLDivElement, LoaderProps>(function Loader({ onReady
         setCursorVisible(false);
       };
 
-      // 0–2s — black standby
-      tl.to({}, { duration: 2 });
+      tl.to({}, { duration: BOOT_STANDBY_S });
 
-      // 2–4s — ASCII wake + header
       tl.to(
         asciiRef.current,
-        { opacity: 0.1, filter: "brightness(0.72)", duration: 1.1, ease: "power1.out" },
-        2,
+        { opacity: 0.1, filter: "brightness(0.72)", duration: 0.65, ease: "power1.out" },
+        BOOT_WAKE_AT,
       );
-      tl.to(asciiGlowRef.current, { opacity: 0.22, duration: 1.2, ease: "power1.out" }, 2.1);
+      tl.to(asciiGlowRef.current, { opacity: 0.22, duration: 0.7, ease: "power1.out" }, BOOT_WAKE_AT + 0.1);
       tl.to(
         asciiGlowRef.current,
-        { opacity: 0.38, duration: 0.55, ease: "sine.inOut", yoyo: true, repeat: 1 },
-        2.8,
+        { opacity: 0.38, duration: 0.35, ease: "sine.inOut", yoyo: true, repeat: 1 },
+        BOOT_WAKE_AT + 0.55,
       );
       tl.to(
         asciiRef.current,
-        { opacity: 0.14, filter: "brightness(0.82)", duration: 0.5, ease: "sine.inOut", yoyo: true, repeat: 1 },
-        2.85,
+        { opacity: 0.14, filter: "brightness(0.82)", duration: 0.32, ease: "sine.inOut", yoyo: true, repeat: 1 },
+        BOOT_WAKE_AT + 0.58,
       );
-      tl.call(() => setAsciiActivity(0.25), [], 2.2);
-      tl.to(headerRef.current, { opacity: 1, duration: 0.9, ease }, 2);
+      tl.call(() => setAsciiActivity(0.25), [], BOOT_WAKE_AT + 0.2);
+      tl.to(headerRef.current, { opacity: 1, duration: 0.55, ease }, BOOT_WAKE_AT);
       SYS_INFO.forEach((_, i) => {
-        tl.to(sysLineRefs.current[i], { opacity: 1, duration: 0.28, ease: "power1.out" }, 2.15 + i * 0.22);
+        tl.to(
+          sysLineRefs.current[i],
+          { opacity: 1, duration: 0.2, ease: "power1.out" },
+          BOOT_WAKE_AT + 0.15 + i * 0.12,
+        );
       });
-      tl.to(progressRef.current, { opacity: 1, duration: 0.6, ease }, 2.5);
-      tl.to(telemetryWrapRef.current, { opacity: 1, duration: 0.55, ease }, 2.65);
+      tl.to(progressRef.current, { opacity: 1, duration: 0.4, ease }, BOOT_WAKE_AT + 0.35);
+      tl.to(telemetryWrapRef.current, { opacity: 1, duration: 0.38, ease }, BOOT_WAKE_AT + 0.45);
 
-      // 4s+ — ASCII ramps, boot script runs sequentially
       tl.to(
         asciiRef.current,
-        { opacity: 0.26, filter: "brightness(1)", duration: 5.8, ease: "power1.inOut" },
-        4,
+        { opacity: 0.26, filter: "brightness(1)", duration: 3.6, ease: "power1.inOut" },
+        BOOT_SCRIPT_AT,
       );
-      tl.to(asciiGlowRef.current, { opacity: 0.16, duration: 5.5, ease: "power1.inOut" }, 4.2);
-      tl.call(() => setAsciiActivity(0.55), [], 4);
-      tl.call(() => setAsciiActivity(0.85), [], 8.5);
+      tl.to(asciiGlowRef.current, { opacity: 0.16, duration: 3.4, ease: "power1.inOut" }, BOOT_SCRIPT_AT + 0.15);
+      tl.call(() => setAsciiActivity(0.55), [], BOOT_SCRIPT_AT);
+      tl.call(() => setAsciiActivity(0.85), [], BOOT_SCRIPT_AT + 2.8);
 
       const bootTl = gsap.timeline();
       BOOT_SCRIPT.forEach((step) => {
         if ("phase" in step) {
           bootTl.call(() => revealPhaseRow(step.phase));
-          bootTl.to({}, { duration: 0.32 });
+          bootTl.to({}, { duration: 0.32 * BOOT_TIME_SCALE });
           return;
         }
         bootTl.call(() => startLog(step.log));
-        bootTl.to({}, { duration: step.wait });
+        bootTl.to({}, { duration: step.wait * BOOT_TIME_SCALE });
         if ("stall" in step && step.stall) {
           bootTl.call(() => setAsciiActivity(0.38));
-          bootTl.to({}, { duration: step.stall });
+          bootTl.to({}, { duration: step.stall * BOOT_TIME_SCALE });
           bootTl.call(() => setAsciiActivity(0.68));
         }
         bootTl.call(() => completeLog(step.clock, step.blocks));
-        bootTl.to({}, { duration: 0.1 });
+        bootTl.to({}, { duration: 0.1 * BOOT_TIME_SCALE });
       });
-      tl.add(bootTl, 4);
+      tl.add(bootTl, BOOT_SCRIPT_AT);
 
-      tl.call(() => setCursorVisible(false), [], 10.8);
-      tl.call(() => setAsciiActivity(1), [], 10.9);
-      tl.to(finalRef.current, { opacity: 1, duration: 0.65, ease: "power1.inOut" }, 11);
-      tl.to({}, { duration: 0.55 }, 11.65);
+      tl.call(() => setCursorVisible(false), [], BOOT_FINAL_AT - 0.15);
+      tl.call(() => setAsciiActivity(1), [], BOOT_FINAL_AT - 0.08);
+      tl.to(finalRef.current, { opacity: 1, duration: 0.45, ease: "power1.inOut" }, BOOT_FINAL_AT);
+      tl.to({}, { duration: BOOT_END_PAUSE_S }, BOOT_FINAL_AT + 0.45);
     }, rootRef);
 
     return () => {
       ctx.revert();
-      document.body.style.overflow = "";
     };
   }, []);
 

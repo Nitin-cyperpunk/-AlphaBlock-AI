@@ -29,7 +29,7 @@ export const Phone = forwardRef<HTMLDivElement, PhoneProps>(function Phone(
       }}
     >
       <div
-        className="relative h-full w-full rounded-[36px] border border-white/10 p-[6px] device-layer__frame"
+        className="relative h-full w-full rounded-[36px] border border-slate-900/10 p-[6px] device-layer__frame"
         style={{
           background: "linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%)",
         }}

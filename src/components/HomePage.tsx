@@ -1,17 +1,22 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Loader from "@/components/Loader";
 import HeroSection from "@/components/HeroSection";
 import SetupSection from "@/components/SetupSection";
 import FooterSection from "@/components/FooterSection";
+import { useLenis } from "@/context/LenisContext";
 
 const HERO_TRANSITION_S = 1.8;
 const HERO_ENTER_Y = 40;
 
 export default function HomePage() {
+  const lenis = useLenis();
+  const lenisRef = useRef(lenis);
+  lenisRef.current = lenis;
+
   const [bootComplete, setBootComplete] = useState(false);
   const [loaderVisible, setLoaderVisible] = useState(true);
   const [chromeVisible, setChromeVisible] = useState(false);
@@ -22,6 +27,11 @@ export default function HomePage() {
   const loaderRef = useRef<HTMLDivElement>(null);
   const heroRevealedRef = useRef(false);
   const transitionTweenRef = useRef<gsap.core.Timeline | null>(null);
+
+  useEffect(() => {
+    lenisRef.current?.stop();
+    document.body.style.overflow = "hidden";
+  }, [lenis]);
 
   const handleLoaderReady = useCallback(() => {
     if (heroRevealedRef.current || transitionTweenRef.current) return;
@@ -43,6 +53,8 @@ export default function HomePage() {
       }
       window.scrollTo(0, 0);
       document.body.style.overflow = "";
+      lenisRef.current?.start();
+      requestAnimationFrame(() => ScrollTrigger.refresh());
       setLoaderVisible(false);
       setBootComplete(true);
       transitionTweenRef.current = null;
@@ -106,7 +118,7 @@ export default function HomePage() {
 
   return (
     <>
-      <main className="relative max-w-full overflow-x-hidden bg-[#010101]">
+      <main className="relative max-w-full overflow-x-clip bg-white">
         <HeroSection
           interactive={interactive}
           chromeVisible={chromeVisible}
