@@ -1,12 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Laptop } from "@/components/Laptop";
 import { Phone } from "@/components/Phone";
-import { assets } from "@/lib/assets";
 import {
   buildSetupAtmosphere,
   renderSetupAtmosphere,
@@ -39,7 +37,6 @@ type SetupAtmosphereProps = {
   beamsRef: React.RefObject<HTMLDivElement | null>;
   asciiRef: React.RefObject<HTMLCanvasElement | null>;
   depthRef: React.RefObject<HTMLCanvasElement | null>;
-  cloudRef: React.RefObject<HTMLDivElement | null>;
   dimRef: React.RefObject<HTMLDivElement | null>;
   spotlightRef: React.RefObject<HTMLDivElement | null>;
 };
@@ -50,29 +47,12 @@ function SetupAtmosphere({
   beamsRef,
   asciiRef,
   depthRef,
-  cloudRef,
   dimRef,
   spotlightRef,
 }: SetupAtmosphereProps) {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[#010101]">
-      <div ref={cloudRef} className="setup-atmo-cloud absolute inset-0 overflow-hidden" aria-hidden>
-        <Image
-          src={assets.heroBg}
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-center"
-          draggable={false}
-        />
-        <div className="brand-cloud-scrim brand-cloud-scrim--setup absolute inset-0" />
-      </div>
+    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[#F8F9FB]">
       <div className="setup-atmo-base absolute inset-0" aria-hidden />
-      <div className="hero-fog absolute inset-0" aria-hidden>
-        <div className="hero-fog-plate hero-fog-left" />
-        <div className="hero-fog-plate hero-fog-right" />
-        <div className="hero-fog-plate hero-fog-bottom" />
-      </div>
       <div className="setup-atmo-grid absolute inset-0" aria-hidden />
       <div ref={noiseRef} className="setup-atmo-noise absolute inset-0" aria-hidden />
       <div ref={glowRef} className="setup-atmo-glow absolute" aria-hidden />
@@ -80,7 +60,7 @@ function SetupAtmosphere({
       <canvas ref={asciiRef} className="setup-atmo-ascii absolute inset-0 h-full w-full" aria-hidden />
       <canvas ref={depthRef} className="setup-atmo-depth absolute inset-0 h-full w-full" aria-hidden />
       <div aria-hidden className="setup-atmo-vignette absolute inset-0" />
-      <div ref={dimRef} aria-hidden className="absolute inset-0 bg-black opacity-0" />
+      <div ref={dimRef} aria-hidden className="setup-atmo-dim absolute inset-0 opacity-0" />
       <div ref={spotlightRef} className="setup-atmo-spotlight absolute inset-0 opacity-0" aria-hidden />
     </div>
   );
@@ -108,7 +88,6 @@ export default function SetupSection() {
   const beamsRef = useRef<HTMLDivElement>(null);
   const asciiCanvasRef = useRef<HTMLCanvasElement>(null);
   const depthCanvasRef = useRef<HTMLCanvasElement>(null);
-  const cloudRef = useRef<HTMLDivElement>(null);
   const bgDimRef = useRef<HTMLDivElement>(null);
   const spotlightRef = useRef<HTMLDivElement>(null);
   const footerHandoffRef = useRef<HTMLDivElement>(null);
@@ -148,7 +127,6 @@ export default function SetupSection() {
     const beams = beamsRef.current;
     const asciiCanvas = asciiCanvasRef.current;
     const depthCanvas = depthCanvasRef.current;
-    const cloud = cloudRef.current;
     const bgDim = bgDimRef.current;
     const spotlight = spotlightRef.current;
     const telegramLayer = telegramRef.current;
@@ -186,7 +164,6 @@ export default function SetupSection() {
       !beams ||
       !asciiCanvas ||
       !depthCanvas ||
-      !cloud ||
       !bgDim ||
       !spotlight ||
       !telegramLayer ||
@@ -344,13 +321,12 @@ export default function SetupSection() {
           });
 
           gsap.set([noise, glow, beams, asciiCanvas, depthCanvas], { force3D: true });
-          gsap.set(cloud, { opacity: 0.46 });
           gsap.set(bgDim, { opacity: 0 });
           gsap.set(spotlight, { opacity: 0 });
 
           gsap.set(intelUi, { autoAlpha: 0, pointerEvents: "none" });
           gsap.set(sideNav, { x: -72, force3D: true });
-          gsap.set(glassPanel, { x: 120, force3D: true });
+          gsap.set(glassPanel, { x: 120, y: 24, opacity: 1, visibility: "visible", force3D: true });
           gsap.set(telegramLayer, { opacity: 0 });
           gsap.set(cameraStage, { scale: 1, transformOrigin: "50% 50%", force3D: true });
 
@@ -454,8 +430,6 @@ export default function SetupSection() {
               onEnterBack: () => requestAnimationFrame(() => ScrollTrigger.refresh()),
             },
           });
-
-          timeline.to(cloud, { opacity: 0.52, duration: 0.12, ease: "power1.out" }, 0);
 
           timeline.to(glow, { yPercent: 10, duration: 1, ease: "none" }, 0);
           timeline.to(beams, { yPercent: 12, duration: 1, ease: "none" }, 0);
@@ -652,14 +626,47 @@ export default function SetupSection() {
           );
           timeline.to(
             bgDim,
-            { opacity: 0.45, duration: dur.rotate * 0.55, ease: "power1.inOut" },
+            { opacity: 0.14, duration: dur.rotate * 0.55, ease: "power2.out" },
             rotateStart + dur.rotate * 0.45,
           );
           timeline.to(
             spotlight,
-            { opacity: 1, duration: dur.rotate * 0.55, ease: "power1.inOut" },
+            { opacity: 0.65, duration: dur.rotate * 0.55, ease: "power2.out" },
             rotateStart + dur.rotate * 0.45,
           );
+
+          const revealMessage = (el: HTMLElement, at: number, delay = 0) => {
+            timeline.fromTo(
+              el,
+              { autoAlpha: 0, y: 14 },
+              {
+                autoAlpha: 1,
+                y: 0,
+                duration: msgDur,
+                ease: "power3.out",
+                onUpdate: () => {
+                  telegramFeed.scrollTop = telegramFeed.scrollHeight;
+                },
+                onComplete: () => {
+                  telegramFeed.scrollTop = telegramFeed.scrollHeight;
+                },
+              },
+              at + delay,
+            );
+          };
+
+          const showGlassPanel = (index: number, at: number) => {
+            glassSlides.forEach((slide, i) => {
+              timeline.set(
+                slide,
+                {
+                  autoAlpha: i === index ? 1 : 0,
+                  visibility: i === index ? "visible" : "hidden",
+                },
+                at,
+              );
+            });
+          };
 
           /* Section 3 — Intelligence handoff (continuous from landscape) */
           const handoffStart = intelT(0);
@@ -687,9 +694,11 @@ export default function SetupSection() {
           );
           timeline.to(
             glassPanel,
-            { x: 0, duration: handoffDur * 0.55, ease: "power3.out" },
+            { x: 0, y: 0, duration: handoffDur * 0.55, ease: "power3.out" },
             handoffStart + handoffDur * 0.1,
           );
+
+          showGlassPanel(0, handoffStart + handoffDur * 0.1);
 
           timeline.to(
             phone,
@@ -722,51 +731,16 @@ export default function SetupSection() {
             { scale: 1, duration: handoffDur, ease: "power2.out" },
             handoffStart,
           );
+          const vignette = section.querySelector<HTMLElement>(".setup-atmo-vignette");
           timeline.to(
-            bgDim,
-            { opacity: 0.22, duration: handoffDur * 0.55, ease: "power1.inOut" },
+            [glow, spotlight, beams, asciiCanvas, depthCanvas, bgDim, noise, vignette],
+            { opacity: 0, duration: handoffDur * 0.5, ease: "power2.out" },
             handoffStart,
           );
-
-          const revealMessage = (el: HTMLElement, at: number, delay = 0) => {
-            timeline.fromTo(
-              el,
-              { autoAlpha: 0, y: 14 },
-              {
-                autoAlpha: 1,
-                y: 0,
-                duration: msgDur,
-                ease: "power3.out",
-                onUpdate: () => {
-                  telegramFeed.scrollTop = telegramFeed.scrollHeight;
-                },
-                onComplete: () => {
-                  telegramFeed.scrollTop = telegramFeed.scrollHeight;
-                },
-              },
-              at + delay,
-            );
-          };
-
-          const showGlassPanel = (index: number, at: number) => {
-            glassSlides.forEach((slide, i) => {
-              timeline.to(
-                slide,
-                {
-                  autoAlpha: i === index ? 1 : 0,
-                  visibility: i === index ? "visible" : "hidden",
-                  duration: msgDur * 0.9,
-                  ease: "power2.inOut",
-                },
-                at,
-              );
-            });
-          };
 
           /* Feature 1 — KOL Alert */
           const kolStart = intelT(INTEL_PHASE.handoffEnd);
           revealMessage(telegramMessages[0]!, kolStart);
-          showGlassPanel(0, kolStart);
 
           /* Feature 2 — Whale Alert */
           const whaleStart = intelT(INTEL_PHASE.kolEnd);
@@ -782,17 +756,6 @@ export default function SetupSection() {
           const surgeStart = intelT(INTEL_PHASE.clusterEnd);
           revealMessage(telegramMessages[3]!, surgeStart, msgDur * 0.35);
           showGlassPanel(3, surgeStart + msgDur * 0.2);
-          timeline.to(
-            glow,
-            { opacity: 1.2, duration: intelT(INTEL_PHASE.surgeEnd) - surgeStart, ease: "power1.inOut" },
-            surgeStart,
-          );
-          timeline.to(
-            asciiCanvas,
-            { opacity: 0.95, duration: intelT(INTEL_PHASE.surgeEnd) - surgeStart, ease: "power1.inOut" },
-            surgeStart,
-          );
-
           /* Feature 5 — Ask Anything */
           const askStart = intelT(INTEL_PHASE.surgeEnd);
           revealMessage(userMessage, askStart);
@@ -815,25 +778,11 @@ export default function SetupSection() {
           );
           revealMessage(aiResponse, askStart + msgDur * 1.65);
           showGlassPanel(4, askStart + msgDur * 0.5);
-          timeline.to(
-            spotlight,
-            { opacity: 1.2, duration: intelT(1) - askStart, ease: "power1.inOut" },
-            askStart,
-          );
-          timeline.to(
-            bgDim,
-            { opacity: 0.32, duration: intelT(1) - askStart, ease: "power1.inOut" },
-            askStart,
-          );
-
           const footerRevealStart = intelT(0.62);
           const footerHandoff = footerHandoffRef.current;
           if (footerHandoff) {
             gsap.set(footerHandoff, { opacity: 0 });
-            timeline.to(cloud, { opacity: 0.22, duration: intelT(1) - footerRevealStart, ease: "power1.inOut" }, footerRevealStart);
-            timeline.to(glow, { opacity: 0.55, yPercent: 18, duration: intelT(1) - footerRevealStart, ease: "power1.inOut" }, footerRevealStart);
-            timeline.to(bgDim, { opacity: 0.48, duration: intelT(1) - footerRevealStart, ease: "power1.inOut" }, footerRevealStart);
-            timeline.to(footerHandoff, { opacity: 1, duration: intelT(1) - footerRevealStart, ease: "power1.inOut" }, footerRevealStart);
+            timeline.to(footerHandoff, { opacity: 1, duration: intelT(1) - footerRevealStart, ease: "power2.out" }, footerRevealStart);
           }
 
           context.add(() => {
@@ -856,19 +805,17 @@ export default function SetupSection() {
       ref={sectionRef}
       id="product"
       aria-label="Product experience"
-      className="setup-section relative scroll-mt-28 bg-[#010101] text-white"
+      className="setup-section relative scroll-mt-28 bg-[#F8F9FB] text-[#111827]"
     >
       <div id="features" className="pointer-events-none absolute top-24 h-0 w-0" aria-hidden />
       <div id="intelligence" className="pointer-events-none absolute top-24 h-0 w-0" aria-hidden />
       <div className="relative flex h-screen w-full items-center justify-center overflow-hidden">
-        <div className="setup-section__seam" aria-hidden />
         <SetupAtmosphere
           noiseRef={noiseRef}
           glowRef={glowRef}
           beamsRef={beamsRef}
           asciiRef={asciiCanvasRef}
           depthRef={depthCanvasRef}
-          cloudRef={cloudRef}
           dimRef={bgDimRef}
           spotlightRef={spotlightRef}
         />
@@ -937,9 +884,7 @@ export default function SetupSection() {
 
           <div ref={intelUiRef} className="intel-ui">
             <IntelligenceSideNav navRef={sideNavRef} itemRefs={sideNavItemRefs} />
-            <div ref={glassPanelRef}>
-              <LiquidGlassPanel panelRefs={glassPanelSlideRefs} />
-            </div>
+            <LiquidGlassPanel wrapRef={glassPanelRef} panelRefs={glassPanelSlideRefs} />
           </div>
         </div>
       </div>

@@ -46,7 +46,7 @@ export function buildSetupAtmosphere(w: number, h: number): SetupAtmosphereState
     vx: rand(-0.12, 0.12),
     vy: rand(-0.18, 0.18),
     size: rand(9, 13),
-    opacity: rand(0.05, 0.1),
+    opacity: rand(0.03, 0.05),
     phase: rand(0, Math.PI * 2),
   }));
 
@@ -56,7 +56,7 @@ export function buildSetupAtmosphere(w: number, h: number): SetupAtmosphereState
     vx: rand(-0.06, 0.06),
     vy: rand(-0.1, 0.1),
     size: rand(1, 2),
-    opacity: rand(0.14, 0.34),
+    opacity: rand(0.06, 0.14),
   }));
 
   return { ascii, depth };
@@ -106,13 +106,13 @@ export function renderSetupAtmosphere(
 
   for (const p of state.ascii) {
     const flicker = 0.85 + Math.sin(p.phase) * 0.15;
-    asciiCtx.fillStyle = `rgba(255,255,255,${(p.opacity * flicker).toFixed(3)})`;
+    asciiCtx.fillStyle = `rgba(13,45,205,${(p.opacity * flicker).toFixed(3)})`;
     asciiCtx.font = `500 ${p.size}px ${MONO}`;
     asciiCtx.fillText(p.char, p.x, p.y);
   }
 
   for (const p of state.depth) {
-    depthCtx.fillStyle = `rgba(255,255,255,${p.opacity.toFixed(3)})`;
+    depthCtx.fillStyle = `rgba(15,23,42,${p.opacity.toFixed(3)})`;
     depthCtx.beginPath();
     depthCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     depthCtx.fill();

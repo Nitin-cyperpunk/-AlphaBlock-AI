@@ -4,11 +4,13 @@ import { INTELLIGENCE_CHAPTERS } from "@/lib/intelligence-chapters";
 
 type LiquidGlassPanelProps = {
   panelRefs: React.MutableRefObject<(HTMLDivElement | null)[]>;
+  wrapRef?: React.RefObject<HTMLDivElement | null>;
 };
 
-export function LiquidGlassPanel({ panelRefs }: LiquidGlassPanelProps) {
+export function LiquidGlassPanel({ panelRefs, wrapRef }: LiquidGlassPanelProps) {
   return (
-    <div className="liquid-glass-panel" aria-live="polite">
+    <div ref={wrapRef} className="liquid-glass-panel" aria-live="polite">
+      <div className="liquid-glass-panel__glow" aria-hidden />
       <div className="liquid-glass-panel__sheen" aria-hidden />
       <div className="liquid-glass-panel__inner">
         {INTELLIGENCE_CHAPTERS.map((chapter, index) => (

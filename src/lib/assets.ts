@@ -18,7 +18,7 @@ export const assets = {
   mobileLandscape1: encode("/landscape1.png"),
   mobileLandscape2: encode("/landscape 2.png"),
   /** Hero + setup atmosphere — subtle grid overlay, institutional cinematic tone */
-  heroBg: encode("/Assets/cloud.png"),
+  heroBg: encode("/Assets/ascii-art.png"),
   /** Alternate hero backgrounds */
   heroBgMountain: encode("/Assets/moutain.png"),
   heroBgGarden: encode("/Assets/flowergarden.png"),
