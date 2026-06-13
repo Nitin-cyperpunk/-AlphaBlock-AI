@@ -177,7 +177,7 @@ export function HeroBackground({
     let perf: HeroPerfConfig = getHeroPerfConfig();
     let w = 0;
     let h = 0;
-    let field: AsciiFieldState = { particles: [] };
+    let field: AsciiFieldState = { particles: [], driftSeed: 0 };
     let lastFrame = 0;
     let lastTime = performance.now();
     let frameIndex = 0;
@@ -285,7 +285,7 @@ export function HeroBackground({
           h,
           dt,
           mouse,
-          interactiveRef.current && environmentReadyRef.current && perf.enablePointerHover,
+          environmentReadyRef.current && perf.enablePointerHover,
           reduced,
         );
 

@@ -345,9 +345,9 @@ body {
 
 .hero-ascii-blur {
   z-index: 1;
-  mix-blend-mode: screen;
   filter: blur(3px);
-  opacity: 0.92;
+  opacity: 0.65;
+  mix-blend-mode: screen;
 }
 
 .hero-vignette {

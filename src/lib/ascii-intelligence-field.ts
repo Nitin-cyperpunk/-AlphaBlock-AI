@@ -1,455 +1,397 @@
 /**
- * ASCII intelligence field — canvas-only, edge-dense clusters, 3 depth layers.
+ * Atmospheric ASCII intelligence field — strict linear grid, edge-dense rows.
+ * Horizontal scan-line strings + radial safe zone + gradual character decode.
  */
 
-export const ASCII_CHARS = ["0", "1", "#", "$", "%", "@", "+", "x", "/", "\\"] as const;
+export const ASCII_CHARS = ["@", "#", "$", "S", "0", "8", "X", "x", "+"] as const;
 
-/** 0 = faint tiny, 1 = medium, 2 = larger brighter */
+/** 0 = faint / far, 1 = mid, 2 = near */
 export type ParticleLayer = 0 | 1 | 2;
 
-export const CURSOR_RADIUS = 225;
-const LERP = 0.14;
-const SIZE_SCALE = 1.22;
-const HOVER_SIZE_BOOST = 0.14;
-const LAYER_SCROLL: Record<ParticleLayer, number> = { 0: 4, 1: 12, 2: 22 };
+export const CURSOR_RADIUS = 200;
+const LERP = 0.11;
+const HOVER_LERP = 0.14;
+const DRIFT_PERIOD_MS = 38000;
+const DECODE_RATE = 0.014;
+const HOVER_DECODE_RATE = 0.055;
+const LAYER_PARALLAX = { 0: 0.12, 1: 0.15, 2: 0.18 } as const;
+const OPACITY_MIN = 0.14;
+const OPACITY_MAX = 0.32;
+const HOVER_OPACITY_BOOST = 0.18;
+const HOVER_SIZE_BOOST = 0.08;
+
+/** Pale cyan-white — reference palette */
+const GLYPH_RGB = { r: 175, g: 215, b: 228 } as const;
+const GLYPH_HOVER_RGB = { r: 210, g: 245, b: 255 } as const;
 
 export type AsciiParticle = {
   layer: ParticleLayer;
   char: string;
   x: number;
   y: number;
-  vx: number;
-  vy: number;
+  row: number;
+  col: number;
   size: number;
   baseOpacity: number;
   offsetX: number;
   offsetY: number;
-  glow: number;
   opacityBoost: number;
-  rotation: number;
-  targetRotation: number;
-  nextCharSwapAt: number;
-  phase: number;
+  hoverGlow: number;
 };
 
 export type AsciiFieldState = {
   particles: AsciiParticle[];
+  driftSeed: number;
 };
 
 const MONO_FONT = 'var(--font-jetbrains), ui-monospace, "JetBrains Mono", monospace';
+
+/* ── Perlin noise (compact 2D) ─────────────────────────────────────────── */
+
+const PERM = new Uint8Array(512);
+
+function initPerm(): void {
+  const src = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) src[i] = i;
+  for (let i = 255; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    const tmp = src[i]!;
+    src[i] = src[j]!;
+    src[j] = tmp;
+  }
+  for (let i = 0; i < 512; i++) PERM[i] = src[i & 255]!;
+}
+
+let permReady = false;
+function ensurePerm(): void {
+  if (!permReady) {
+    initPerm();
+    permReady = true;
+  }
+}
+
+function fade(t: number): number {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+function grad(hash: number, x: number, y: number): number {
+  const h = hash & 3;
+  const u = h < 2 ? x : y;
+  const v = h < 2 ? y : x;
+  return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+}
+
+function perlin2(x: number, y: number): number {
+  ensurePerm();
+  const xi = Math.floor(x) & 255;
+  const yi = Math.floor(y) & 255;
+  const xf = x - Math.floor(x);
+  const yf = y - Math.floor(y);
+  const u = fade(xf);
+  const v = fade(yf);
+  const aa = PERM[xi]! + yi;
+  const ab = PERM[xi + 1]! + yi;
+  return lerp(
+    lerp(grad(PERM[aa]!, xf, yf), grad(PERM[ab]!, xf - 1, yf), u),
+    lerp(grad(PERM[aa + 1]!, xf, yf - 1), grad(PERM[ab + 1]!, xf - 1, yf - 1), u),
+    v,
+  );
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-function pickChar(): string {
-  return ASCII_CHARS[(Math.random() * ASCII_CHARS.length) | 0]!;
+function pickCharAt(row: number, col: number): string {
+  const idx =
+    (row * 17 + col * 31 + ((row ^ col) % ASCII_CHARS.length) + ASCII_CHARS.length) %
+    ASCII_CHARS.length;
+  return ASCII_CHARS[idx]!;
 }
 
-function swapChar(current: string): string {
+function swapChar(current: string, row: number, col: number): string {
   const idx = ASCII_CHARS.indexOf(current as (typeof ASCII_CHARS)[number]);
-  if (idx >= 0 && Math.random() < 0.55) {
-    const next = (idx + 1 + ((Math.random() * 2) | 0)) % ASCII_CHARS.length;
-    return ASCII_CHARS[next]!;
+  if (idx >= 0 && Math.random() < 0.7) {
+    const delta = Math.random() < 0.5 ? 1 : -1;
+    return ASCII_CHARS[(idx + delta + ASCII_CHARS.length) % ASCII_CHARS.length]!;
   }
-  return pickChar();
+  return pickCharAt(row, col);
 }
 
-type SpawnZone =
-  | "corner"
-  | "left"
-  | "right"
-  | "top"
-  | "bottom"
-  | "belowCta"
-  | "belowCtaCore"
-  | "fill"
-  | "center";
+/* ── Density field ─────────────────────────────────────────────────────── */
 
-/** Tight core kept clear for headline — edges/corners/bottom stay dense */
-function inHeadlineSafeZone(x: number, y: number, w: number, h: number): boolean {
-  const dx = (x - w * 0.5) / (w * 0.2);
-  const dy = (y - h * 0.44) / (h * 0.11);
-  return dx * dx + dy * dy < 1;
+const CONTENT_CX = 0.5;
+const CONTENT_CY = 0.44;
+const CLEAR_RX = 0.26;
+const CLEAR_RY = 0.19;
+
+/**
+ * Curved top boundary — bowl arc like the reference (yellow line).
+ * Dips lower at center (above eyebrow), rises toward top corners.
+ */
+function curvedTopBoundary(nx: number): number {
+  const edgeT = Math.abs(nx - 0.5) / 0.5;
+  const bowl = edgeT * edgeT * (3 - 2 * edgeT);
+  const centerY = 0.21;
+  const cornerY = 0.042;
+  let y = centerY + (cornerY - centerY) * bowl;
+
+  const wobble = perlin2(nx * 10 + 1.7, 2.3) * 0.032;
+  const fine = perlin2(nx * 22 + 4.1, 0.6) * 0.014;
+  return y + wobble + fine;
 }
 
-function sampleInZone(w: number, h: number, zone: SpawnZone): { x: number; y: number } {
-  const padX = w * 0.02;
-  const padY = h * 0.02;
+/** Organic top cut — rough edge, not a rectangle */
+function isAboveCurvedTop(nx: number, ny: number): boolean {
+  const boundary = curvedTopBoundary(nx);
+  const gap = ny - boundary;
 
-  switch (zone) {
-    case "corner": {
-      const left = Math.random() < 0.5;
-      const top = Math.random() < 0.5;
-      return {
-        x: left ? rand(padX, w * 0.22) : rand(w * 0.78, w - padX),
-        y: top ? rand(padY, h * 0.22) : rand(h * 0.58, h - padY),
-      };
-    }
-    case "left":
-      return {
-        x: rand(padX, w * 0.14),
-        y: rand(padY, h - padY),
-      };
-    case "right":
-      return {
-        x: rand(w * 0.86, w - padX),
-        y: rand(padY, h - padY),
-      };
-    case "top":
-      return {
-        x: rand(padX, w - padX),
-        y: rand(padY, h * 0.16),
-      };
-    case "bottom":
-      return {
-        x: rand(padX, w - padX),
-        y: rand(h * 0.55, h - padY),
-      };
-    case "belowCta":
-      return {
-        x: rand(padX, w - padX),
-        y: rand(h * 0.54, h - padY),
-      };
-    case "belowCtaCore":
-      return {
-        x: rand(w * 0.18, w * 0.82),
-        y: rand(h * 0.52, h * 0.86),
-      };
-    case "fill": {
-      const edge = Math.random();
-      if (edge < 0.25) return { x: rand(padX, w * 0.2), y: rand(padY, h - padY) };
-      if (edge < 0.5) return { x: rand(w * 0.8, w - padX), y: rand(padY, h - padY) };
-      if (edge < 0.7) return { x: rand(padX, w - padX), y: rand(padY, h * 0.2) };
-      return { x: rand(padX, w - padX), y: rand(h * 0.48, h - padY) };
-    }
-    case "center": {
-      for (let i = 0; i < 16; i++) {
-        const x = w * (0.28 + Math.random() * 0.44);
-        const y = h * (0.28 + Math.random() * 0.38);
-        if (!inHeadlineSafeZone(x, y, w, h)) return { x, y };
-      }
-      return { x: w * (0.2 + Math.random() * 0.6), y: h * (0.5 + Math.random() * 0.42) };
-    }
-  }
+  if (gap < -0.03) return true;
+  if (gap > 0.028) return false;
+
+  const n = (perlin2(nx * 18, ny * 26 + 3.2) + 1) * 0.5;
+  const n2 = (perlin2(nx * 31 + 8, ny * 19) + 1) * 0.5;
+  const rough = (n * 0.65 + n2 * 0.35 - 0.5) * 0.065;
+  return gap < rough;
 }
 
-function zoneQuotas(total: number): Record<SpawnZone, number> {
-  const corner = Math.floor(total * 0.12);
-  const left = Math.floor(total * 0.12);
-  const right = Math.floor(total * 0.12);
-  const top = Math.floor(total * 0.08);
-  const bottom = Math.floor(total * 0.1);
-  const belowCtaCore = Math.floor(total * 0.22);
-  const belowCta = Math.floor(total * 0.14);
-  const fill = Math.floor(total * 0.08);
-  const used = corner + left + right + top + bottom + belowCtaCore + belowCta + fill;
-  const center = Math.max(0, total - used);
-  return { corner, left, right, top, bottom, belowCta, belowCtaCore, fill, center };
+/** Center content hole with soft, noisy perimeter */
+function isInRoughCenterClear(nx: number, ny: number): boolean {
+  const dx = (nx - CONTENT_CX) / CLEAR_RX;
+  const dy = (ny - CONTENT_CY) / CLEAR_RY;
+  const d = Math.sqrt(dx * dx + dy * dy);
+
+  if (d < 0.72) return true;
+  if (d > 1.14) return false;
+
+  const fade = smoothstep(0.72, 1.14, d);
+  const n = (perlin2(nx * 12 + 2, ny * 12 + 5) + 1) * 0.5;
+  const n2 = (perlin2(nx * 24, ny * 20 + 1) + 1) * 0.5;
+  const rough = n * 0.6 + n2 * 0.4;
+  return fade < 0.42 + rough * 0.38;
 }
 
-function pickLayer(): ParticleLayer {
-  const r = Math.random();
-  if (r < 0.42) return 0;
-  if (r < 0.78) return 1;
+function isAsciiExcludedZone(x: number, y: number, w: number, h: number): boolean {
+  const nx = x / w;
+  const ny = y / h;
+  if (isAboveCurvedTop(nx, ny)) return true;
+  if (isInRoughCenterClear(nx, ny)) return true;
+  return false;
+}
+
+/** Interaction / readability safe zone */
+export function inContentSafeZone(x: number, y: number, w: number, h: number): boolean {
+  return isAsciiExcludedZone(x, y, w, h);
+}
+
+function cellShimmer(row: number, col: number): number {
+  ensurePerm();
+  return (perlin2(col * 0.11, row * 0.09 + 1.4) + 1) * 0.5;
+}
+
+function pickLayer(row: number): ParticleLayer {
+  const mod = row % 5;
+  if (mod === 0 || mod === 3) return 0;
+  if (mod === 1 || mod === 4) return 1;
   return 2;
 }
 
-function layerSize(layer: ParticleLayer): number {
-  switch (layer) {
-    case 0:
-      return rand(5, 8) * SIZE_SCALE;
-    case 1:
-      return rand(9, 13) * SIZE_SCALE;
-    case 2:
-      return rand(14, 19) * SIZE_SCALE;
-  }
+function layerSize(_layer: ParticleLayer, mobile: boolean): number {
+  return mobile ? 10 : 11;
 }
 
-function layerOpacityScale(layer: ParticleLayer): number {
-  switch (layer) {
-    case 0:
-      return 0.55;
-    case 1:
-      return 0.82;
-    case 2:
-      return 1;
-  }
+function layerOpacity(layer: ParticleLayer, row: number, col: number): number {
+  const shimmer = cellShimmer(row, col);
+  const base = rand(OPACITY_MIN, OPACITY_MAX);
+  const scale = layer === 0 ? 0.88 : layer === 1 ? 0.96 : 1;
+  return Math.min(0.38, base * scale * (0.82 + shimmer * 0.22));
 }
 
-function layerDrift(layer: ParticleLayer): number {
-  switch (layer) {
-    case 0:
-      return 0.035;
-    case 1:
-      return 0.055;
-    case 2:
-      return 0.075;
+/* ── Field build — full grid outside center ────────────────────────────── */
+
+type GridCell = {
+  x: number;
+  y: number;
+  row: number;
+  col: number;
+};
+
+function collectOutsideCells(
+  w: number,
+  h: number,
+  cellW: number,
+  cellH: number,
+): GridCell[] {
+  const cols = Math.ceil(w / cellW);
+  const rows = Math.ceil(h / cellH);
+  const cells: GridCell[] = [];
+  const seen = new Set<string>();
+
+  const tryAdd = (x: number, y: number, row: number, col: number) => {
+    const key = `${Math.round(x * 10)}:${Math.round(y * 10)}`;
+    if (seen.has(key)) return;
+    if (x < 1 || x > w - 1 || y < 1 || y > h - 1) return;
+    if (isAsciiExcludedZone(x, y, w, h)) return;
+    seen.add(key);
+    cells.push({ x, y, row, col });
+  };
+
+  /* Edge-aligned grid — reaches viewport edges */
+  for (let row = 0; row < rows; row++) {
+    const y = Math.min(h - 1, row * cellH + cellH * 0.5);
+    for (let col = 0; col < cols; col++) {
+      const x = Math.min(w - 1, col * cellW + cellW * 0.5);
+      tryAdd(x, y, row, col);
+    }
   }
+
+  /* Corner patches — fill gap between screen corner and main grid */
+  const cornerRows = 5;
+  const cornerCols = 6;
+  for (let i = 0; i < cornerRows; i++) {
+    for (let j = 0; j < cornerCols; j++) {
+      const yTop = i * cellH + cellH * 0.5;
+      const yBot = h - (i + 1) * cellH + cellH * 0.5;
+      const xLeft = j * cellW + cellW * 0.5;
+      const xRight = w - (j + 1) * cellW + cellW * 0.5;
+
+      tryAdd(xLeft, yTop, 800 + i, j);
+      tryAdd(xRight, yTop, 800 + i, 100 + j);
+      tryAdd(xLeft, yBot, 850 + i, j);
+      tryAdd(xRight, yBot, 850 + i, 100 + j);
+    }
+  }
+
+  return cells;
 }
 
 function pushParticle(
   particles: AsciiParticle[],
-  w: number,
-  h: number,
-  zone: SpawnZone,
-  now: number,
+  c: GridCell,
+  mobile: boolean,
 ): void {
-  const { x, y } = sampleInZone(w, h, zone);
-  const layer = pickLayer();
-  const drift = layerDrift(layer);
-  const isEdge =
-    zone === "corner" ||
-    zone === "left" ||
-    zone === "right" ||
-    zone === "top" ||
-    zone === "bottom" ||
-    zone === "belowCta" ||
-    zone === "belowCtaCore";
-  const edgeBoost = isEdge ? 1.45 : 1;
-
+  const layer = pickLayer(c.row);
   particles.push({
     layer,
-    char: pickChar(),
-    x,
-    y,
-    vx: (Math.random() - 0.5) * drift * (isEdge ? 0.55 : 1),
-    vy: (Math.random() - 0.5) * drift * (isEdge ? 0.55 : 1),
-    size: layerSize(layer) * (isEdge ? 1.05 : 1),
-    baseOpacity:
-      rand(isEdge ? 0.06 : 0.03, isEdge ? 0.2 : 0.14) * layerOpacityScale(layer) * edgeBoost,
+    char: pickCharAt(c.row, c.col),
+    x: c.x,
+    y: c.y,
+    row: c.row,
+    col: c.col,
+    size: layerSize(layer, mobile),
+    baseOpacity: layerOpacity(layer, c.row, c.col),
     offsetX: 0,
     offsetY: 0,
-    glow: 0,
     opacityBoost: 0,
-    rotation: 0,
-    targetRotation: 0,
-    nextCharSwapAt: now + rand(3000, 8000),
-    phase: Math.random() * Math.PI * 2,
+    hoverGlow: 0,
   });
 }
 
-/** Locked anchors — corners + bottom strip under CTAs */
-function pushAnchorParticles(particles: AsciiParticle[], w: number, h: number, now: number): void {
-  const corners: [number, number][] = [
-    [0.05, 0.07],
-    [0.95, 0.07],
-    [0.05, 0.93],
-    [0.95, 0.93],
-    [0.12, 0.12],
-    [0.88, 0.12],
-    [0.12, 0.88],
-    [0.88, 0.88],
-  ];
+export function buildAsciiField(w: number, h: number, maxCount: number): AsciiFieldState {
+  ensurePerm();
 
-  const perCorner = 18;
-  for (const [nx, ny] of corners) {
-    for (let i = 0; i < perCorner; i++) {
-      const layer = pickLayer();
-      const drift = layerDrift(layer);
-      particles.push({
-        layer,
-        char: pickChar(),
-        x: nx * w + rand(-w * 0.04, w * 0.04),
-        y: ny * h + rand(-h * 0.04, h * 0.04),
-        vx: (Math.random() - 0.5) * drift * 0.35,
-        vy: (Math.random() - 0.5) * drift * 0.35,
-        size: layerSize(layer) * 1.08,
-        baseOpacity: rand(0.08, 0.22) * layerOpacityScale(layer),
-        offsetX: 0,
-        offsetY: 0,
-        glow: 0,
-        opacityBoost: 0,
-        rotation: 0,
-        targetRotation: 0,
-        nextCharSwapAt: now + rand(3000, 8000),
-        phase: Math.random() * Math.PI * 2,
-      });
-    }
+  const mobile = w < 768;
+  let cellW = mobile ? 14 : 12;
+  let cellH = mobile ? 17 : 15;
+
+  let cells = collectOutsideCells(w, h, cellW, cellH);
+
+  /* Widen spacing only if we exceed the perf budget */
+  while (cells.length > maxCount && cellW < 26) {
+    cellW += 1;
+    cellH += 1;
+    cells = collectOutsideCells(w, h, cellW, cellH);
   }
 
-  const bottomCols = 16;
-  const bottomRows = 6;
-  for (let row = 0; row < bottomRows; row++) {
-    for (let col = 0; col < bottomCols; col++) {
-      const layer = pickLayer();
-      const drift = layerDrift(layer);
-      const x = (col / Math.max(1, bottomCols - 1)) * w * 0.96 + w * 0.02;
-      const y = h * (0.5 + (row / Math.max(1, bottomRows - 1)) * 0.46) + rand(-10, 10);
-      particles.push({
-        layer,
-        char: pickChar(),
-        x: x + rand(-w * 0.012, w * 0.012),
-        y,
-        vx: (Math.random() - 0.5) * drift * 0.35,
-        vy: (Math.random() - 0.5) * drift * 0.2,
-        size: layerSize(layer),
-        baseOpacity: rand(0.08, 0.22) * layerOpacityScale(layer),
-        offsetX: 0,
-        offsetY: 0,
-        glow: 0,
-        opacityBoost: 0,
-        rotation: 0,
-        targetRotation: 0,
-        nextCharSwapAt: now + rand(3000, 8000),
-        phase: Math.random() * Math.PI * 2,
-      });
-    }
-  }
+  cells.sort((a, b) => (a.row !== b.row ? a.row - b.row : a.col - b.col));
 
-  /* Dense fill directly under CTA buttons (center gap) */
-  const coreCols = 10;
-  const coreRows = 7;
-  for (let row = 0; row < coreRows; row++) {
-    for (let col = 0; col < coreCols; col++) {
-      const layer = pickLayer();
-      const drift = layerDrift(layer);
-      const x = w * 0.16 + (col / Math.max(1, coreCols - 1)) * w * 0.68 + rand(-w * 0.01, w * 0.01);
-      const y = h * 0.5 + (row / Math.max(1, coreRows - 1)) * h * 0.4 + rand(-12, 12);
-      particles.push({
-        layer,
-        char: pickChar(),
-        x,
-        y,
-        vx: (Math.random() - 0.5) * drift * 0.3,
-        vy: (Math.random() - 0.5) * drift * 0.18,
-        size: layerSize(layer) * 1.06,
-        baseOpacity: rand(0.09, 0.24) * layerOpacityScale(layer),
-        offsetX: 0,
-        offsetY: 0,
-        glow: 0,
-        opacityBoost: 0,
-        rotation: 0,
-        targetRotation: 0,
-        nextCharSwapAt: now + rand(3000, 8000),
-        phase: Math.random() * Math.PI * 2,
-      });
-    }
-  }
-
-  const topCols = 8;
-  for (let col = 0; col < topCols; col++) {
-    const layer = pickLayer();
-    const drift = layerDrift(layer);
-    particles.push({
-      layer,
-      char: pickChar(),
-      x: (col / (topCols - 1)) * w * 0.9 + w * 0.05,
-      y: rand(h * 0.03, h * 0.14),
-      vx: (Math.random() - 0.5) * drift * 0.4,
-      vy: (Math.random() - 0.5) * drift * 0.35,
-      size: layerSize(layer),
-      baseOpacity: rand(0.06, 0.18) * layerOpacityScale(layer),
-      offsetX: 0,
-      offsetY: 0,
-      glow: 0,
-      opacityBoost: 0,
-      rotation: 0,
-      targetRotation: 0,
-      nextCharSwapAt: now + rand(3000, 8000),
-      phase: Math.random() * Math.PI * 2,
-    });
-  }
-}
-
-export function buildAsciiField(w: number, h: number, count: number): AsciiFieldState {
   const particles: AsciiParticle[] = [];
-  const now = performance.now();
-
-  pushAnchorParticles(particles, w, h, now);
-
-  const quotas = zoneQuotas(count);
-  const zones = Object.keys(quotas) as SpawnZone[];
-  for (const zone of zones) {
-    const n = quotas[zone];
-    for (let i = 0; i < n; i++) {
-      pushParticle(particles, w, h, zone, now);
-    }
+  for (const cell of cells) {
+    pushParticle(particles, cell, mobile);
   }
 
-  return { particles };
+  return { particles, driftSeed: Math.random() * Math.PI * 2 };
 }
+
+/* ── Simulation step ───────────────────────────────────────────────────── */
 
 export function stepAsciiField(
   state: AsciiFieldState,
   w: number,
   h: number,
-  dt: number,
+  _dt: number,
   mouse: { x: number; y: number; active: boolean },
   interactive: boolean,
   reduced: boolean,
 ): void {
-  const now = performance.now();
+  if (reduced || state.particles.length === 0) return;
+
+  const count = state.particles.length;
+  const swaps = Math.max(1, Math.floor(count * DECODE_RATE * (0.85 + Math.random() * 0.3)));
+  for (let s = 0; s < swaps; s++) {
+    const i = (Math.random() * count) | 0;
+    const p = state.particles[i]!;
+    p.char = swapChar(p.char, p.row, p.col);
+  }
+
   const mx = mouse.x;
   const my = mouse.y;
   const r2 = CURSOR_RADIUS * CURSOR_RADIUS;
+  const mouseInSafe =
+    interactive && mouse.active && inContentSafeZone(mx, my, w, h);
 
-  for (let i = 0; i < state.particles.length; i++) {
+  for (let i = 0; i < count; i++) {
     const p = state.particles[i]!;
-
-    if (!reduced) {
-      const drift = layerDrift(p.layer);
-      p.phase += 0.002 * dt * (p.layer + 1);
-      p.x += p.vx * dt + Math.sin(p.phase) * drift * 0.15;
-      p.y += p.vy * dt + Math.cos(p.phase * 0.87) * drift * 0.12;
-
-      if (now >= p.nextCharSwapAt) {
-        p.char = swapChar(p.char);
-        p.nextCharSwapAt = now + rand(3000, 8000);
-      }
-
-      const margin = 6;
-      if (p.x < margin) {
-        p.x = margin;
-        p.vx = Math.abs(p.vx) * 0.6;
-      } else if (p.x > w - margin) {
-        p.x = w - margin;
-        p.vx = -Math.abs(p.vx) * 0.6;
-      }
-      if (p.y < margin) {
-        p.y = margin;
-        p.vy = Math.abs(p.vy) * 0.6;
-      } else if (p.y > h - margin) {
-        p.y = h - margin;
-        p.vy = -Math.abs(p.vy) * 0.6;
-      }
-    }
-
     let tOx = 0;
     let tOy = 0;
-    let tGlow = 0;
     let tOp = 0;
-    let tRot = 0;
+    let tGlow = 0;
+    let nearCursor = false;
 
-    if (interactive && mouse.active) {
+    if (
+      interactive &&
+      mouse.active &&
+      !mouseInSafe &&
+      !inContentSafeZone(p.x, p.y, w, h)
+    ) {
       const dx = p.x - mx;
       const dy = p.y - my;
       const d2 = dx * dx + dy * dy;
-      if (d2 < r2 && d2 > 0.25) {
+      if (d2 < r2 && d2 > 1) {
+        nearCursor = true;
         const dist = Math.sqrt(d2);
-        const f = (1 - dist / CURSOR_RADIUS) ** 1.4;
+        const f = (1 - dist / CURSOR_RADIUS) ** 1.35;
         const inv = 1 / dist;
-        tOx = dx * inv * f * 9;
-        tOy = dy * inv * f * 9;
-        tOp = f * 0.7;
-        tGlow = f * 0.98;
-        tRot = f * 0.12 * (dx > 0 ? 1 : -1);
+        tOx = dx * inv * f * rand(2, 3.5);
+        tOy = dy * inv * f * rand(2, 3.5);
+        tOp = f * HOVER_OPACITY_BOOST;
+        tGlow = f;
+
+        if (Math.random() < HOVER_DECODE_RATE * f) {
+          p.char = swapChar(p.char, p.row, p.col);
+        }
       }
     }
 
-    p.offsetX += (tOx - p.offsetX) * LERP;
-    p.offsetY += (tOy - p.offsetY) * LERP;
-    p.glow += (tGlow - p.glow) * LERP;
-    p.opacityBoost += (tOp - p.opacityBoost) * LERP;
-    p.targetRotation = tRot;
-    p.rotation += (p.targetRotation - p.rotation) * 0.1;
+    p.offsetX += (tOx - p.offsetX) * (nearCursor ? HOVER_LERP : LERP);
+    p.offsetY += (tOy - p.offsetY) * (nearCursor ? HOVER_LERP : LERP);
+    p.opacityBoost += (tOp - p.opacityBoost) * (nearCursor ? HOVER_LERP : LERP);
+    p.hoverGlow += (tGlow - p.hoverGlow) * (nearCursor ? HOVER_LERP : LERP);
   }
 }
 
-type DrawBatch = {
-  lastFont: string;
-  lastFill: string;
-};
+/* ── Render ────────────────────────────────────────────────────────────── */
+
+type DrawBatch = { lastFont: string; lastFill: string };
 
 function ensureFont(ctx: CanvasRenderingContext2D, batch: DrawBatch, size: number): void {
   const font = `500 ${size}px ${MONO_FONT}`;
@@ -466,41 +408,28 @@ function ensureFill(ctx: CanvasRenderingContext2D, batch: DrawBatch, fill: strin
   }
 }
 
-function particleOpacity(p: AsciiParticle, now: number): number {
-  const flicker = 0.9 + 0.1 * Math.sin(p.phase * 1.35 + now * 0.00035);
-  return Math.min(0.94, (p.baseOpacity + p.opacityBoost + p.glow * 0.16) * flicker);
-}
-
-function drawParticle(
-  ctx: CanvasRenderingContext2D,
-  batch: DrawBatch,
-  p: AsciiParticle,
-  x: number,
-  y: number,
-  opacity: number,
-): void {
-  if (opacity < 0.006) return;
-
-  const bright = Math.min(255, 178 + p.glow * 77);
-  const hoverScale = 1 + p.glow * HOVER_SIZE_BOOST;
-  ensureFont(ctx, batch, p.size * hoverScale);
-  ensureFill(ctx, batch, `rgba(${bright}, ${Math.min(255, bright + 14)}, 255, ${opacity})`);
-
-  if (Math.abs(p.rotation) > 0.001) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(p.rotation);
-    ctx.fillText(p.char, 0, 0);
-    ctx.restore();
-  } else {
-    ctx.fillText(p.char, x, y);
-  }
+function globalDrift(now: number, seed: number): { x: number; y: number } {
+  const t = (now % DRIFT_PERIOD_MS) / DRIFT_PERIOD_MS;
+  const angle = t * Math.PI * 2 + seed;
+  return {
+    x: Math.sin(angle) * 2,
+    y: Math.cos(angle * 0.93) * 3.5,
+  };
 }
 
 export type DrawAsciiOptions = {
   scrollProgress: number;
   now: number;
 };
+
+function glyphFill(hoverGlow: number): { r: number; g: number; b: number } {
+  const t = Math.min(1, hoverGlow);
+  return {
+    r: Math.round(GLYPH_RGB.r + (GLYPH_HOVER_RGB.r - GLYPH_RGB.r) * t),
+    g: Math.round(GLYPH_RGB.g + (GLYPH_HOVER_RGB.g - GLYPH_RGB.g) * t),
+    b: Math.round(GLYPH_RGB.b + (GLYPH_HOVER_RGB.b - GLYPH_RGB.b) * t),
+  };
+}
 
 export function renderAsciiCanvas(
   ctx: CanvasRenderingContext2D,
@@ -511,18 +440,32 @@ export function renderAsciiCanvas(
   layers: ParticleLayer[] = [0, 1, 2],
 ): void {
   const { scrollProgress, now } = options;
+  const drift = globalDrift(now, state.driftSeed);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
   const batch: DrawBatch = { lastFont: "", lastFill: "" };
 
   for (const layer of layers) {
-    const scrollY = scrollProgress * LAYER_SCROLL[layer];
+    const parallaxY = scrollProgress * h * LAYER_PARALLAX[layer];
+    const layerDriftX = drift.x * (layer + 1) * 0.22;
+    const layerDriftY = drift.y * (layer + 1) * 0.22;
+
     for (let i = 0; i < state.particles.length; i++) {
       const p = state.particles[i]!;
       if (p.layer !== layer) continue;
-      const opacity = particleOpacity(p, now);
-      drawParticle(ctx, batch, p, p.x + p.offsetX, p.y + p.offsetY + scrollY, opacity);
+
+      const opacity = Math.min(0.52, p.baseOpacity + p.opacityBoost);
+      if (opacity < 0.006) continue;
+
+      const x = p.x + p.offsetX + layerDriftX;
+      const y = p.y + p.offsetY + parallaxY + layerDriftY;
+      const { r, g, b } = glyphFill(p.hoverGlow);
+      const size = p.size * (1 + p.hoverGlow * HOVER_SIZE_BOOST);
+
+      ensureFont(ctx, batch, size);
+      ensureFill(ctx, batch, `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(3)})`);
+      ctx.fillText(p.char, x, y);
     }
   }
 }
