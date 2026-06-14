@@ -90,11 +90,7 @@ export default function HomePage() {
 
     tl.to(loaderEl, { opacity: 0, duration: HERO_TRANSITION_S, ease }, 0);
 
-    tl.to(
-      heroShell,
-      { opacity: 1, y: 0, duration: HERO_TRANSITION_S, ease },
-      0,
-    );
+    tl.to(heroShell, { opacity: 1, y: 0, duration: HERO_TRANSITION_S, ease }, 0);
 
     tl.to(
       env,

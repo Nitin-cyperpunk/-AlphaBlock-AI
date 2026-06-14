@@ -225,12 +225,7 @@ type GridCell = {
   col: number;
 };
 
-function collectOutsideCells(
-  w: number,
-  h: number,
-  cellW: number,
-  cellH: number,
-): GridCell[] {
+function collectOutsideCells(w: number, h: number, cellW: number, cellH: number): GridCell[] {
   const cols = Math.ceil(w / cellW);
   const rows = Math.ceil(h / cellH);
   const cells: GridCell[] = [];
@@ -274,11 +269,7 @@ function collectOutsideCells(
   return cells;
 }
 
-function pushParticle(
-  particles: AsciiParticle[],
-  c: GridCell,
-  mobile: boolean,
-): void {
+function pushParticle(particles: AsciiParticle[], c: GridCell, mobile: boolean): void {
   const layer = pickLayer(c.row);
   particles.push({
     layer,
@@ -346,8 +337,7 @@ export function stepAsciiField(
   const mx = mouse.x;
   const my = mouse.y;
   const r2 = CURSOR_RADIUS * CURSOR_RADIUS;
-  const mouseInSafe =
-    interactive && mouse.active && inContentSafeZone(mx, my, w, h);
+  const mouseInSafe = interactive && mouse.active && inContentSafeZone(mx, my, w, h);
 
   for (let i = 0; i < count; i++) {
     const p = state.particles[i]!;
@@ -357,12 +347,7 @@ export function stepAsciiField(
     let tGlow = 0;
     let nearCursor = false;
 
-    if (
-      interactive &&
-      mouse.active &&
-      !mouseInSafe &&
-      !inContentSafeZone(p.x, p.y, w, h)
-    ) {
+    if (interactive && mouse.active && !mouseInSafe && !inContentSafeZone(p.x, p.y, w, h)) {
       const dx = p.x - mx;
       const dy = p.y - my;
       const d2 = dx * dx + dy * dy;
