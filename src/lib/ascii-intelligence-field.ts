@@ -143,7 +143,7 @@ function curvedTopBoundary(nx: number): number {
   const bowl = edgeT * edgeT * (3 - 2 * edgeT);
   const centerY = 0.21;
   const cornerY = 0.042;
-  let y = centerY + (cornerY - centerY) * bowl;
+  const y = centerY + (cornerY - centerY) * bowl;
 
   const wobble = perlin2(nx * 10 + 1.7, 2.3) * 0.032;
   const fine = perlin2(nx * 22 + 4.1, 0.6) * 0.014;
