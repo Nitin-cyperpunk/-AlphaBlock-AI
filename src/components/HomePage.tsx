@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import gsap from "gsap";
@@ -10,7 +10,6 @@ import FooterSection from "@/components/FooterSection";
 import { useLenis } from "@/context/LenisContext";
 
 const HERO_TRANSITION_S = 1.8;
-const HERO_ENTER_Y = 40;
 
 export default function HomePage() {
   const lenis = useLenis();
