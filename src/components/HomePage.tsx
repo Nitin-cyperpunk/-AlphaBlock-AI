@@ -10,7 +10,6 @@ import FooterSection from "@/components/FooterSection";
 import { useLenis } from "@/context/LenisContext";
 
 const HERO_TRANSITION_S = 1.8;
-const HERO_ENTER_Y = 40;
 
 export default function HomePage() {
   const lenis = useLenis();
@@ -91,11 +90,7 @@ export default function HomePage() {
 
     tl.to(loaderEl, { opacity: 0, duration: HERO_TRANSITION_S, ease }, 0);
 
-    tl.to(
-      heroShell,
-      { opacity: 1, y: 0, duration: HERO_TRANSITION_S, ease },
-      0,
-    );
+    tl.to(heroShell, { opacity: 1, y: 0, duration: HERO_TRANSITION_S, ease }, 0);
 
     tl.to(
       env,
